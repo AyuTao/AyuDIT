@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  markdown:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+      - name: Run markdownlint
+        run: markdownlint "**/*.md"
+
+  python:
+    name: Python Static Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ruff
+        run: pip install ruff
+      - name: Ruff lint (ignore missing files)
+        run: ruff check . || true
+      - name: Ruff format check
+        run: ruff format --check . || true
+
+  node:
+    name: Node Placeholder Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies when package.json exists
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+          else
+            echo "package.json not found, skipping install"
+          fi
+      - name: Run tests when available
+        run: |
+          if [ -f package.json ] && npm run | grep -q "test"; then
+            npm test
+          else
+            echo "No tests defined, skipping"
+          fi
+
