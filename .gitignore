@@ -37,6 +37,9 @@ output/
 
 # Resolve logs/temp (示例，可按需扩展)
 ResolveLogs/
+
+# DaVinci Resolve binary bridge
+ayudit_plugin/WorkflowIntegration.node
 docs/达芬奇开发者文档/
 
 agents.md

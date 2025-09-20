@@ -1,82 +1,169 @@
-# AyuDIT
+# AyuDIT - DaVinci Resolve Workflow Automation System
 
-> 基于 DaVinci Resolve Workflow Integration 插件体系的开源 DIT 自动化工具。
+AyuDIT是一个综合的视频制作工作流程自动化解决方案，专为DaVinci Resolve设计。它提供从初始媒体备份到最终报告生成的端到端自动化处理。
 
-[![CI](https://github.com/AyuTao/AyuDIT/actions/workflows/ci.yml/badge.svg)](https://github.com/Tky9090/AyuTao/actions/workflows/ci.yml)
+## 功能特性
 
-AyuDIT 目标是在片场或后期素材整理阶段，自动化完成素材拷贝、导入、LUT 套用、音频同步、代理生成以及带缩略图的报告输出。项目基于 Electron + React + Node.js + Python 技术栈，直接嵌入 DaVinci Resolve 的 Workflow Integrations 界面，实现与 Resolve API 的紧密联动。
+- **自动媒体备份**: 创建多重备份确保数据安全
+- **DaVinci Resolve集成**: 自动项目创建和媒体导入
+- **智能LUT应用**: 基于元数据的自动色彩校正
+- **音频同步**: 自动视频和音频同步
+- **代理媒体生成**: 高效编辑的代理文件创建
+- **综合报告**: 带有缩略图的详细工作流程报告
+- **多语言支持**: 支持中文和英文界面
 
-## 主要特性
-- ✅ 卡口素材拷贝、校验与任务追踪
-- ✅ 调用 Resolve Media Storage API 自动导入素材并构建 Bin 结构
-- ✅ 批量套用 LUT、同步音频并写入元数据
-- ✅ 通过 Resolve 渲染队列生成代理并自动回链
-- ✅ 基于 Resolve 缩略图和元数据生成 PDF 报告
-- ✅ Workflow Integration 插件前端（Electron + React）与 Python 任务引擎协作
+## 系统要求
 
-> 当前仓库处于架构搭建阶段，功能分支将按照 [docs/开发方案.md](docs/开发方案.md) 中的计划逐步实现。
+- Python 3.8+
+- DaVinci Resolve 18.0+
+- macOS 10.15+ (当前版本)
+- 足够的存储空间用于备份和代理文件
 
-## 系统架构概览
-- **Workflow Integration 插件**：复制自官方 SamplePlugin，封装 React UI，符合 sandbox 与 contextIsolation 要求。
-- **Node 调度层**：承载任务队列、IPC 管道、与 `WorkflowIntegration.node` 的交互。
-- **Python 自动化层**：调用 `DaVinciResolveScript`，完成导入、LUT、音频同步、代理渲染、报告输出等任务。
-- **外部工具链**：ffmpeg、ReportLab/WeasyPrint 等可选依赖用于代理与 PDF 生成。
+## 安装
 
-详见 [docs/开发方案.md](docs/开发方案.md) 与 [agents.md](agents.md)。
+1. 克隆仓库:
+```bash
+git clone https://github.com/ayudit/ayudit.git
+cd ayudit
+```
 
-## 开发环境准备
-1. **DaVinci Resolve Studio 19.0.2+**（需要启用 Workflow Integrations）
-2. **Node.js 20+ / npm 或 pnpm / yarn**
-3. **Python 3.10+**（安装并配置 Resolve Scripting API 环境变量）
-4. 可选依赖：`ffmpeg`, `pyenv`, `virtualenv`, `markdownlint-cli`, `ruff`
+2. 安装依赖:
+```bash
+pip install -r requirements.txt
+```
+
+3. 安装应用程序:
+```bash
+pip install -e .
+```
+
+## 配置
+
+首次运行时，AyuDIT会在用户主目录下创建配置文件 `~/.ayudit/config.yaml`。
+
+### 基本配置示例
+
+```yaml
+application:
+  language: "zh_CN"
+  log_level: "INFO"
+
+workflow:
+  backup_locations:
+    - "/backup/location1"
+    - "/backup/location2"
+
+resolve:
+  auto_launch: true
+  project_template: "default"
+
+lut:
+  library_path: "/path/to/luts"
+  auto_apply: true
+
+proxy:
+  enabled: true
+  resolution_threshold: [1920, 1080]
+  codec: "ProRes Proxy"
+
+report:
+  template: "default"
+  auto_open: true
+```
+
+## 使用方法
+
+### 命令行模式
 
 ```bash
-# 克隆仓库（
-git clone https://github.com/AyuTao/AyuDIT.git
-cd AyuDIT
+# 运行完整工作流程
+ayudit --source /path/to/media
 
-# 初始化 Git 子模块或依赖（如有）
-# git submodule update --init --recursive
+# 使用自定义配置
+ayudit --source /path/to/media --config /path/to/config.yaml
+
+# 守护进程模式（用于DaVinci插件）
+ayudit --daemon
 ```
 
-## 开发流程概述
-1. 运行 `npm install` / `pnpm install` 安装前端依赖（待 package.json 添加后执行）。
-2. 创建 Python 虚拟环境并安装任务脚本依赖。
-3. 在 `Workflow Integration Plugins` 目录下链接或复制构建后的插件目录。
-4. 启动开发模式（计划引入 `npm run dev` 与热重载脚本）。
-5. 在 Resolve 中打开 `Workspace -> Workflow Integrations -> AyuDIT` 进行联调。
+### GUI模式
 
-> 详细脚本与命令将在核心代码提交后补充到 README 与 Makefile 中。
-
-## 仓库结构
-```
-AyuDIT/
- ├── agents.md                 # 多代理协作说明
- ├── docs/
- │   ├── 开发方案.md            # 产品/技术方案
- │   └── 达芬奇开发者文档/...   # 官方 API 资料（只读）
- ├── README.md                 # 项目总览（当前文件）
- ├── CONTRIBUTING.md           # 贡献指南（待下节创建）
- └── .github/workflows/ci.yml  # GitHub Actions CI 配置
+```bash
+# 启动图形界面
+ayudit
 ```
 
-## 路线图
-- [ ] 初始化 Workflow Integration 插件骨架
-- [ ] 打通 Node ↔ Python IPC 与 Resolve API 调用
-- [ ] 实现素材拷贝与导入流程
-- [ ] 实现 LUT 套用、音频同步
-- [ ] 实现代理渲染与自动挂接
-- [ ] 实现 PDF 报告导出
-- [ ] 补充自动化测试与打包脚本
+### DaVinci Resolve插件
 
-## 贡献
-项目欢迎社区参与！请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解分支策略、代码规范与 PR 流程。
+1. 将插件文件复制到DaVinci Resolve插件目录
+2. 在DaVinci Resolve中启用工作流程集成
+3. 使用插件界面启动自动化工作流程
 
-## 联系 & 支持
-- GitHub: https://github.com/AyuTao/AyuDIT
-- Issues: https://github.com/AyuTao/AyuDIT/issues
-- 若希望参与讨论，可在 Issues 中创建 `discussion` 标签条目。
+## 开发
+
+### 设置开发环境
+
+```bash
+# 安装开发依赖
+pip install -e ".[dev]"
+
+# 安装pre-commit钩子
+pre-commit install
+```
+
+### 运行测试
+
+```bash
+# 运行所有测试
+pytest
+
+# 运行特定测试
+pytest tests/test_workflow.py
+
+# 生成覆盖率报告
+pytest --cov=ayu_dit --cov-report=html
+```
+
+### 代码格式化
+
+```bash
+# 格式化代码
+black ayu_dit/
+isort ayu_dit/
+
+# 检查代码质量
+flake8 ayu_dit/
+mypy ayu_dit/
+```
+
+## 项目结构
+
+```
+ayu_dit/
+├── __init__.py
+├── main.py                 # 主入口文件
+├── plugin_bridge.py        # 插件桥接器
+├── config/                 # 配置管理
+├── core/                   # 核心工作流程
+├── backup/                 # 媒体备份
+├── resolve/                # DaVinci集成
+├── color/                  # 色彩管理
+├── audio/                  # 音频处理
+├── proxy/                  # 代理生成
+├── reporting/              # 报告生成
+├── ui/                     # 用户界面
+├── communication/          # 进程间通信
+└── utils/                  # 工具模块
+```
 
 ## 许可证
-尚未确定许可证，建议在功能公开前选择适合的开源协议（如 MIT、Apache-2.0 或 GPL 家族）。
 
+本项目采用MIT许可证。详见 [LICENSE](LICENSE) 文件。
+
+## 贡献
+
+欢迎贡献代码！请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解贡献指南。
+
+## 支持
+
+如有问题或建议，请提交Issue或联系开发团队。
