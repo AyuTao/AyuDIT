@@ -5,9 +5,9 @@
 ## 快速开始
 1. Fork 仓库并克隆到本地：
    ```bash
-   git clone https://github.com/Tky9209/AyuDIT.git
+   git clone https://github.com/AyuTao/AyuDIT.git
    cd AyuDIT
-   git remote add upstream https://github.com/Tky9209/AyuDIT.git
+   git remote add upstream https://github.com/AyuTao/AyuDIT.git
    ```
 2. 创建特性分支：
    ```bash

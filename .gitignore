@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node / JavaScript
+node_modules/
+dist/
+coverage/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.pyi
+.mypy_cache/
+.pytest_cache/
+.env
+.venv/
+venv/
+
+# Editor swap / temp files
+*.swp
+*.swo
+*.tmp
+.vscode/
+.idea/
+
+# Build artifacts
+build/
+output/
+
+# Resolve logs/temp (示例，可按需扩展)
+ResolveLogs/
+docs/达芬奇开发者文档/
+
+agents.md
