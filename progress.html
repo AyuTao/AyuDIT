@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Export Progress</title>
+        <style>
+            :root {
+                --bg-color: #282c34;
+                --fg-color: #abb2bf;
+                --primary-color: #61afef;
+                --border-color: #3b4048;
+            }
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Helvetica, Arial, sans-serif;
+                background-color: var(--bg-color);
+                color: var(--fg-color);
+                margin: 0;
+                padding: 15px;
+                box-sizing: border-box;
+                text-align: center;
+                overflow: hidden;
+                border: 1px solid var(--border-color);
+            }
+            .container {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 100%;
+            }
+            #progress-container {
+                width: 100%;
+            }
+            #progress-label {
+                font-size: 14px;
+                margin-bottom: 8px;
+                text-align: left;
+            }
+            .progress-bar-background {
+                width: 100%;
+                height: 20px;
+                background-color: var(--border-color);
+                border-radius: 4px;
+                overflow: hidden;
+            }
+            #progress-bar {
+                width: 0%;
+                height: 100%;
+                background-color: var(--primary-color);
+                border-radius: 4px;
+                transition: width 0.1s ease-in-out;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #progress-percent {
+                font-size: 12px;
+                font-weight: bold;
+                color: #fff;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            }
+            #completion-container {
+                display: none;
+                flex-direction: column;
+                align-items: center;
+            }
+            #completion-message {
+                font-size: 16px;
+                margin-bottom: 15px;
+            }
+            .button-group {
+                display: flex;
+                gap: 10px;
+            }
+            .custom-button {
+                background-color: var(--primary-color);
+                color: #fff;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 14px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+            .custom-button:hover {
+                background-color: #7ac0f8;
+            }
+            .link-button {
+                background: none;
+                border: none;
+                color: var(--primary-color);
+                cursor: pointer;
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+            .link-button:hover {
+                text-decoration: underline;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="progress-container">
+                <div id="progress-label" data-i18n-key="exporting"></div>
+                <div class="progress-bar-background">
+                    <div id="progress-bar">
+                        <span id="progress-percent">0%</span>
+                    </div>
+                </div>
+            </div>
+            <div id="completion-container">
+                <div
+                    id="completion-message"
+                    data-i18n-key="exportComplete"
+                ></div>
+                <div class="button-group">
+                    <button
+                        id="open-file-btn"
+                        class="custom-button"
+                        data-i18n-key="openFile"
+                    ></button>
+                    <button
+                        id="open-folder-btn"
+                        class="custom-button"
+                        data-i18n-key="showInFolder"
+                    ></button>
+                    <button
+                        id="ok-btn"
+                        class="link-button"
+                        data-i18n-key="ok"
+                    ></button>
+                </div>
+            </div>
+        </div>
+        <script src="./progress.js"></script>
+    </body>
+</html>

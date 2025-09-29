@@ -1,5 +1,3 @@
-// NOTE: Follow the security guide while implementing plugin app https://www.electronjs.org/docs/tutorial/security
-
 const {
   app,
   Menu,
@@ -11,12 +9,13 @@ const {
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { PDFDocument, rgb } = require("pdf-lib");
+const { PDFDocument, rgb, degrees } = require("pdf-lib");
 const fontkit = require("fontkit");
 const { PNG } = require("pngjs");
 const WorkflowIntegration = require("./WorkflowIntegration.node");
 
 const PLUGIN_ID = "com.ayudish.resolve.ayuditools";
+const DEFAULT_LOGO_PATH = path.join(__dirname, "img", "ayuditlogo.png");
 
 // --- Custom Application Menu ---
 const isMac = process.platform === "darwin";
@@ -95,13 +94,21 @@ function getSettings() {
       const settingsData = fs.readFileSync(settingsPath);
       return JSON.parse(settingsData);
     } else {
-      const defaultSettings = { language: "en", thumbnailSource: "middle" };
+      const defaultSettings = {
+        language: "en",
+        thumbnailSource: "middle",
+        reportLogoPath: DEFAULT_LOGO_PATH,
+      };
       fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings));
       return defaultSettings;
     }
   } catch (error) {
     console.error("Failed to get settings:", error);
-    return { language: "en", thumbnailSource: "middle" }; // Fallback to default
+    return {
+      language: "en",
+      thumbnailSource: "middle",
+      reportLogoPath: DEFAULT_LOGO_PATH,
+    }; // Fallback to default
   }
 }
 
@@ -137,6 +144,7 @@ function loadLanguage(lang) {
 let resolveObj = null;
 let projectManagerObj = null;
 let mainWindow = null;
+let progressWindow = null;
 
 // Function to log into renderer window console.
 function debugLog(message) {
@@ -222,7 +230,6 @@ async function getMediaStats() {
     projectName: await project.GetName(),
     video: 0,
     audio: 0,
-    image: 0,
     timeline: 0,
     other: 0,
     totalSize: 0,
@@ -259,33 +266,12 @@ async function getMediaStats() {
           ) {
             stats.audio++;
             categorized = true;
-          } else if (clipType === "Still") {
-            stats.image++;
-            categorized = true;
           } else if (clipType === "Timeline") {
             categorized = true;
           }
 
           const filePath = props["File Path"];
           if (filePath) {
-            if (!categorized) {
-              const imageExtensions = [
-                ".jpg",
-                ".jpeg",
-                ".png",
-                ".dng",
-                ".tiff",
-                ".tga",
-                ".exr",
-                ".bmp",
-                ".gif",
-              ];
-              const ext = path.extname(filePath).toLowerCase();
-              if (imageExtensions.includes(ext)) {
-                stats.image++;
-                categorized = true;
-              }
-            }
             try {
               const fileStats = fs.statSync(filePath);
               stats.totalSize += fileStats.size;
@@ -387,7 +373,8 @@ function framesToTimecode(frames, frameRate) {
 
 async function generatePdfReport(
   filePath,
-  { timelines: timelineNames, thumbnailSource },
+  { timelines: timelineNames, thumbnailSource, reportLogoPath },
+  progressCb,
 ) {
   const resolve = await getResolve();
   if (!resolve) return;
@@ -407,6 +394,25 @@ async function generatePdfReport(
   );
   const customFont = await pdfDoc.embedFont(fontBytes);
   const margin = 40;
+
+  // --- Logo Handling ---
+  let logoImage, logoDims;
+  const logoPath =
+    reportLogoPath && fs.existsSync(reportLogoPath)
+      ? reportLogoPath
+      : DEFAULT_LOGO_PATH;
+  try {
+    const logoBytes = fs.readFileSync(logoPath);
+    if (logoPath.toLowerCase().endsWith(".png")) {
+      logoImage = await pdfDoc.embedPng(logoBytes);
+    } else {
+      logoImage = await pdfDoc.embedJpg(logoBytes);
+    }
+    logoDims = logoImage.scaleToFit(80, 40);
+  } catch (e) {
+    debugLog(`Could not load or embed logo: ${e.toString()}`);
+  }
+  // --- End Logo Handling ---
 
   try {
     if (mustSwitchPage) {
@@ -440,6 +446,16 @@ async function generatePdfReport(
       let page = pdfDoc.addPage();
       const { width, height } = page.getSize();
       let y = height - 40;
+
+      // Add logo to top right
+      if (logoImage) {
+        page.drawImage(logoImage, {
+          x: width - margin - logoDims.width,
+          y: height - margin - logoDims.height,
+          width: logoDims.width,
+          height: logoDims.height,
+        });
+      }
 
       const timeline = timelineMap.get(timelineName);
       if (!timeline) continue;
@@ -501,9 +517,7 @@ async function generatePdfReport(
 
       for (const clip of clips) {
         clipsProcessed++;
-        mainWindow.webContents.send("generation-progress", {
-          progress: (clipsProcessed / totalClipsToProcess) * 100,
-        });
+        progressCb({ progress: (clipsProcessed / totalClipsToProcess) * 100 });
 
         let mediaPoolItem;
         try {
@@ -534,7 +548,7 @@ async function generatePdfReport(
             break;
           case "middle":
           default:
-            frameToExport = startFrame + duration / 2;
+            frameToExport = startFrame + Math.floor(duration / 2);
             break;
         }
 
@@ -688,12 +702,16 @@ async function generatePdfReport(
 
     const pdfBytes = await pdfDoc.save();
     fs.writeFileSync(filePath, pdfBytes);
-    mainWindow.webContents.send("generation-complete", { filePath });
+    if (progressWindow) {
+      progressWindow.webContents.send("generation-complete", { filePath });
+    }
   } catch (error) {
     debugLog(`Error generating PDF report: ${error.toString()}`);
-    mainWindow.webContents.send("generation-complete", {
-      error: error.toString(),
-    });
+    if (progressWindow) {
+      progressWindow.webContents.send("generation-complete", {
+        error: error.toString(),
+      });
+    }
   } finally {
     if (mustSwitchPage) {
       await resolve.OpenPage(currentPage);
@@ -701,7 +719,11 @@ async function generatePdfReport(
   }
 }
 
-async function generateCsvReport(filePath, { timelines: timelineNames }) {
+async function generateCsvReport(
+  filePath,
+  { timelines: timelineNames },
+  progressCb,
+) {
   const resolve = await getResolve();
   if (!resolve) return;
 
@@ -741,9 +763,7 @@ async function generateCsvReport(filePath, { timelines: timelineNames }) {
 
       for (const item of items) {
         clipsProcessed++;
-        mainWindow.webContents.send("generation-progress", {
-          progress: (clipsProcessed / totalClipsToProcess) * 100,
-        });
+        progressCb({ progress: (clipsProcessed / totalClipsToProcess) * 100 });
 
         let mediaPoolItem;
         try {
@@ -789,12 +809,16 @@ async function generateCsvReport(filePath, { timelines: timelineNames }) {
 
   try {
     fs.writeFileSync(filePath, headerRow + dataRows);
-    mainWindow.webContents.send("generation-complete", { filePath });
+    if (progressWindow) {
+      progressWindow.webContents.send("generation-complete", { filePath });
+    }
   } catch (error) {
     debugLog(`Error writing CSV file: ${error.toString()}`);
-    mainWindow.webContents.send("generation-complete", {
-      error: error.toString(),
-    });
+    if (progressWindow) {
+      progressWindow.webContents.send("generation-complete", {
+        error: error.toString(),
+      });
+    }
   }
 }
 
@@ -806,39 +830,86 @@ function registerResolveEventHandlers() {
   ipcMain.handle("settings:save", (event, settings) => saveSettings(settings));
   ipcMain.handle("language:load", (event, lang) => loadLanguage(lang));
   ipcMain.on("app:quit", () => app.quit());
-  ipcMain.on("shell:openPath", (event, path) => shell.openPath(path));
-  ipcMain.on("shell:showItemInFolder", (event, path) =>
-    shell.showItemInFolder(path),
-  );
+
+  // Handlers from Progress Window
+  ipcMain.on("progress:close", () => {
+    if (progressWindow) progressWindow.close();
+  });
+  ipcMain.on("progress:open-file", (event, path) => {
+    shell.openPath(path);
+  });
+  ipcMain.on("progress:show-item", (event, path) => {
+    shell.showItemInFolder(path);
+  });
+
+  ipcMain.handle("dialog:open-image", async () => {
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+      properties: ["openFile"],
+      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg"] }],
+    });
+    return filePaths && filePaths.length > 0 ? filePaths[0] : null;
+  });
+
+  const createProgressWindow = () => {
+    progressWindow = new BrowserWindow({
+      width: 400,
+      height: 120,
+      parent: mainWindow,
+      modal: true,
+      frame: false,
+      resizable: false,
+      show: false, // Hide initially to prevent flicker
+      webPreferences: {
+        preload: path.join(__dirname, "preload_progress.js"),
+      },
+    });
+    progressWindow.once("ready-to-show", () => {
+      progressWindow.show();
+    });
+    progressWindow.loadFile("progress.html");
+    progressWindow.on("closed", () => (progressWindow = null));
+  };
 
   ipcMain.on("export-pdf-report", async (event, payload) => {
-    const { filePath } = await dialog.showSaveDialog({
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
       title: "Export PDF Report",
       defaultPath: `DIT_Report_${Date.now()}.pdf`,
       filters: [{ name: "PDF Files", extensions: ["pdf"] }],
     });
 
     if (filePath) {
-      let { timelines, thumbnailSource } = payload;
+      createProgressWindow();
+      let { timelines, thumbnailSource, reportLogoPath } = payload;
       if (!timelines || timelines.length === 0) {
         const project = await getCurrentProject();
         const timeline = await project.GetCurrentTimeline();
         if (timeline) timelines = [await timeline.GetName()];
       }
       if (timelines && timelines.length > 0) {
-        generatePdfReport(filePath, { timelines, thumbnailSource });
+        generatePdfReport(
+          filePath,
+          { timelines, thumbnailSource, reportLogoPath },
+          (progress) => {
+            if (progressWindow) {
+              progressWindow.webContents.send("generation-progress", progress);
+            }
+          },
+        );
+      } else {
+        if (progressWindow) progressWindow.close();
       }
     }
   });
 
   ipcMain.on("export-csv-report", async (event, payload) => {
-    const { filePath } = await dialog.showSaveDialog({
+    const { filePath } = await dialog.showSaveDialog(mainWindow, {
       title: "Export CSV Report",
       defaultPath: `DIT_Report_${Date.now()}.csv`,
       filters: [{ name: "CSV Files", extensions: ["csv"] }],
     });
 
     if (filePath) {
+      createProgressWindow();
       let { timelines } = payload;
       if (!timelines || timelines.length === 0) {
         const project = await getCurrentProject();
@@ -846,7 +917,13 @@ function registerResolveEventHandlers() {
         if (timeline) timelines = [await timeline.GetName()];
       }
       if (timelines && timelines.length > 0) {
-        generateCsvReport(filePath, { timelines });
+        generateCsvReport(filePath, { timelines }, (progress) => {
+          if (progressWindow) {
+            progressWindow.webContents.send("generation-progress", progress);
+          }
+        });
+      } else {
+        if (progressWindow) progressWindow.close();
       }
     }
   });

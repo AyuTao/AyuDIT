@@ -2,8 +2,7 @@
 <BlackmagicDesign>
     <Plugin>
         <Id>com.ayudish.resolve.ayuditools</Id>
-        <Name>ayuDITools</Name>
-        <Version>1.0</Version>
+        	<Name>AyuDITools</Name>        <Version>1.0</Version>
         <Description>ayuDITools</Description>
         <FilePath>main.js</FilePath>
     </Plugin>

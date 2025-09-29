@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="UTF-8" />
-        <title>ayuDITools</title>
+        <title>AyuDITools</title>
         <link rel="stylesheet" type="text/css" href="./css/styles.css" />
     </head>
     <body>
@@ -29,7 +29,7 @@
                     <div class="stat-card">
                         <div class="icon video">&#9654;</div>
                         <div class="stat-card-info">
-                            <h4 data-i18n-key="videos"></h4>
+                            <h4 data-i18n-key="footage"></h4>
                             <p id="video-count">0</p>
                         </div>
                     </div>
@@ -41,14 +41,7 @@
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="icon image">&#9638;</div>
-                        <div class="stat-card-info">
-                            <h4 data-i18n-key="images"></h4>
-                            <p id="image-count">0</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="icon timeline">&#8986;</div>
+                        <div class="icon timeline">&#127909;</div>
                         <div class="stat-card-info">
                             <h4 data-i18n-key="timelines"></h4>
                             <p id="timeline-count">0</p>
@@ -59,24 +52,18 @@
 
             <div class="timeline-selection-container">
                 <div class="timeline-header">
-                    <h3 data-i18n-key="timelineSelectionTitle">
-                        Select Timelines for Report
-                    </h3>
+                    <h3 data-i18n-key="timelineSelectionTitle"></h3>
                     <div class="button-group">
                         <button
                             id="generate-pdf-button"
                             class="custom-button"
                             data-i18n-key="generatePdf"
-                        >
-                            Generate PDF
-                        </button>
+                        ></button>
                         <button
                             id="export-csv-button"
                             class="custom-button"
                             data-i18n-key="exportCsv"
-                        >
-                            Export CSV
-                        </button>
+                        ></button>
                     </div>
                 </div>
                 <div class="timeline-controls">
@@ -84,17 +71,13 @@
                         id="select-all-timelines"
                         class="link-button"
                         data-i18n-key="selectAll"
-                    >
-                        Select All
-                    </button>
+                    ></button>
                     <span class="separator">|</span>
                     <button
                         id="deselect-all-timelines"
                         class="link-button"
                         data-i18n-key="deselectAll"
-                    >
-                        Deselect All
-                    </button>
+                    ></button>
                 </div>
                 <ul id="timeline-list" class="timeline-list"></ul>
             </div>
@@ -144,44 +127,28 @@
                     </div>
                     <hr />
                     <div class="form-group">
-                        <label
-                            for="thumbnail-source-select"
-                            data-i18n-key="thumbnailSource"
-                            >Thumbnail Source:</label
-                        >
+                        <label for="thumbnail-source-select" data-i18n-key="thumbnailSource"></label>
                         <select id="thumbnail-source-select">
-                            <option value="first">First Frame</option>
-                            <option value="middle" selected>
-                                Middle Frame
-                            </option>
-                            <option value="last">Last Frame</option>
+                            <option value="first" data-i18n-key="firstFrame"></option>
+                            <option value="middle" selected data-i18n-key="middleFrame"></option>
+                            <option value="last" data-i18n-key="lastFrame"></option>
                         </select>
                     </div>
-                </div>
+                    <hr>
+                    <div class="form-group">
+                        <label data-i18n-key="reportLogo"></label>
+                        <div class="logo-preview-container">
+                            <img id="logo-preview" src="./img/ayuditlogo.png" alt="Logo Preview">
+                            <div class="logo-buttons">
+                                <button id="change-logo-button" class="custom-button" data-i18n-key="change"></button>
+                                <button id="reset-logo-button" class="link-button" data-i18n-key="resetToDefault"></button>
+                            </div>
+                        </div>
+                    </div>
             </div>
         </div>
 
-        <!-- Progress Modal -->
-        <div id="progress-modal" class="modal-overlay" style="display: none">
-            <div class="progress-content">
-                <h3 id="progress-title">Generating Report...</h3>
-                <div id="progress-bar-container" class="progress-bar-container">
-                    <div id="progress-bar" class="progress-bar"></div>
-                    <span id="progress-percent">0%</span>
-                </div>
-                <div id="progress-completion-actions" style="display: none">
-                    <button id="open-file-button" class="custom-button">
-                        Open File
-                    </button>
-                    <button id="show-folder-button" class="custom-button">
-                        Show in Folder
-                    </button>
-                    <button id="progress-ok-button" class="custom-button">
-                        OK
-                    </button>
-                </div>
-            </div>
-        </div>
+
 
         <script type="text/javascript" src="./renderer.js"></script>
     </body>

@@ -19,5 +19,6 @@ contextBridge.exposeInMainWorld("resolveAPI", {
   startCsvReport: (payload) => ipcRenderer.send("export-csv-report", payload),
   openPath: (path) => ipcRenderer.send("shell:openPath", path),
   showItemInFolder: (path) => ipcRenderer.send("shell:showItemInFolder", path),
+  openImageDialog: () => ipcRenderer.invoke("dialog:open-image"),
   quitApp: () => ipcRenderer.send("app:quit"),
 });

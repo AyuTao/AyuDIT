@@ -2,6 +2,8 @@ let refreshIntervalId = null;
 let i18nData = {};
 let currentSettings = {};
 
+const DEFAULT_LOGO_PATH = "./img/ayuditlogo.png";
+
 // --- Initialization ---
 window.addEventListener("DOMContentLoaded", async () => {
   // Listen for logs from the main process
@@ -13,12 +15,16 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   currentSettings = await window.resolveAPI.getSettings();
   if (!currentSettings.thumbnailSource) {
-    currentSettings.thumbnailSource = "middle"; // Default value
+    currentSettings.thumbnailSource = "middle";
+  }
+  if (!currentSettings.reportLogoPath) {
+    currentSettings.reportLogoPath = DEFAULT_LOGO_PATH;
   }
 
   await loadAndApplyLanguage(currentSettings.language || "en");
   document.getElementById("thumbnail-source-select").value =
     currentSettings.thumbnailSource;
+  updateLogoPreview();
   setupEventListeners();
   updateDashboard();
   populateTimelineList();
@@ -73,6 +79,12 @@ function setupEventListeners() {
     .getElementById("thumbnail-source-select")
     .addEventListener("change", handleThumbnailSourceChange);
   document
+    .getElementById("change-logo-button")
+    .addEventListener("click", handleChangeLogo);
+  document
+    .getElementById("reset-logo-button")
+    .addEventListener("click", handleResetLogo);
+  document
     .getElementById("generate-pdf-button")
     .addEventListener("click", () => handleGenerateReportFromSelection("pdf"));
   document
@@ -84,10 +96,6 @@ function setupEventListeners() {
   document
     .getElementById("deselect-all-timelines")
     .addEventListener("click", () => setAllTimelinesSelected(false));
-
-  // Progress modal listeners
-  window.resolveAPI.onGenerationProgress(updateProgress);
-  window.resolveAPI.onGenerationComplete(showCompletionActions);
 }
 
 async function handleLanguageChange(event) {
@@ -103,68 +111,24 @@ async function handleThumbnailSourceChange(event) {
   await window.resolveAPI.saveSettings(currentSettings);
 }
 
-// --- Progress Modal Logic ---
-function showProgressModal() {
-  const modal = document.getElementById("progress-modal");
-  const title = document.getElementById("progress-title");
-  const progressBarContainer = document.getElementById(
-    "progress-bar-container",
-  );
-  const completionActions = document.getElementById(
-    "progress-completion-actions",
-  );
-
-  title.textContent = "Generating Report...";
-  progressBarContainer.style.display = "block";
-  completionActions.style.display = "none";
-  updateProgress({ progress: 0 }); // Reset progress bar
-  modal.style.display = "flex";
+async function handleChangeLogo() {
+  const newPath = await window.resolveAPI.openImageDialog();
+  if (newPath) {
+    currentSettings.reportLogoPath = newPath;
+    await window.resolveAPI.saveSettings(currentSettings);
+    updateLogoPreview();
+  }
 }
 
-function updateProgress({ progress }) {
-  const progressBar = document.getElementById("progress-bar");
-  const progressPercent = document.getElementById("progress-percent");
-  progressBar.style.width = `${progress}%`;
-  progressPercent.textContent = `${Math.round(progress)}%`;
+async function handleResetLogo() {
+  currentSettings.reportLogoPath = DEFAULT_LOGO_PATH;
+  await window.resolveAPI.saveSettings(currentSettings);
+  updateLogoPreview();
 }
 
-function showCompletionActions({ filePath }) {
-  const title = document.getElementById("progress-title");
-  const progressBarContainer = document.getElementById(
-    "progress-bar-container",
-  );
-  const completionActions = document.getElementById(
-    "progress-completion-actions",
-  );
-  const openFileButton = document.getElementById("open-file-button");
-  const showFolderButton = document.getElementById("show-folder-button");
-  const okButton = document.getElementById("progress-ok-button");
-
-  title.textContent = "Report Generated Successfully";
-  progressBarContainer.style.display = "none";
-  completionActions.style.display = "flex";
-
-  // Clone and replace to remove old listeners
-  const newOpenFileButton = openFileButton.cloneNode(true);
-  openFileButton.parentNode.replaceChild(newOpenFileButton, openFileButton);
-  newOpenFileButton.addEventListener("click", () =>
-    window.resolveAPI.openPath(filePath),
-  );
-
-  const newShowFolderButton = showFolderButton.cloneNode(true);
-  showFolderButton.parentNode.replaceChild(
-    newShowFolderButton,
-    showFolderButton,
-  );
-  newShowFolderButton.addEventListener("click", () =>
-    window.resolveAPI.showItemInFolder(filePath),
-  );
-
-  const newOkButton = okButton.cloneNode(true);
-  okButton.parentNode.replaceChild(newOkButton, okButton);
-  newOkButton.addEventListener("click", () => {
-    document.getElementById("progress-modal").style.display = "none";
-  });
+function updateLogoPreview() {
+  const preview = document.getElementById("logo-preview");
+  preview.src = `${currentSettings.reportLogoPath}?t=${new Date().getTime()}`;
 }
 
 // --- Auto Refresh Logic ---
@@ -203,7 +167,6 @@ async function updateDashboard() {
       projectNameEl.textContent = stats.projectName;
       document.getElementById("video-count").textContent = stats.video;
       document.getElementById("audio-count").textContent = stats.audio;
-      document.getElementById("image-count").textContent = stats.image;
       document.getElementById("timeline-count").textContent = stats.timeline;
       document.getElementById("total-size").textContent = formatBytes(
         stats.totalSize,
@@ -241,7 +204,7 @@ async function populateTimelineList() {
 
       const meta = document.createElement("span");
       meta.className = "timeline-meta";
-      meta.textContent = `(${timeline.resolution} | ${timeline.frameRate}fps | ${timeline.duration} | ${timeline.clipCount} clips | ${timeline.totalSize})`;
+      meta.textContent = `(${timeline.resolution} | ${timeline.frameRate}fps | ${timeline.duration} | ${timeline.clipCount} ${i18nData.clips || "clips"} | ${timeline.totalSize})`;
 
       li.appendChild(checkbox);
       li.appendChild(label);
@@ -252,7 +215,7 @@ async function populateTimelineList() {
     addDragAndDropListeners(timelineListEl);
   } catch (error) {
     console.error("Failed to populate timeline list:", error);
-    timelineListEl.innerHTML = `<li>Error loading timelines.</li>`;
+    timelineListEl.innerHTML = `<li>${i18nData.errorLoading || "Error loading timelines."}</li>`;
   }
 }
 
@@ -317,10 +280,10 @@ function handleGenerateReportFromSelection(type) {
   });
 
   if (selectedTimelines.length > 0) {
-    showProgressModal();
     const payload = {
       timelines: selectedTimelines,
       thumbnailSource: currentSettings.thumbnailSource,
+      reportLogoPath: currentSettings.reportLogoPath,
     };
     if (type === "pdf") {
       window.resolveAPI.startPdfReport(payload);
@@ -328,7 +291,9 @@ function handleGenerateReportFromSelection(type) {
       window.resolveAPI.startCsvReport(payload);
     }
   } else {
-    alert("Please select at least one timeline.");
+    alert(
+      i18nData.selectTimelineAlert || "Please select at least one timeline.",
+    );
   }
 }
 
