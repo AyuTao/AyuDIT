@@ -41,7 +41,9 @@ function setupEventListeners() {
   const settingsButton = document.getElementById("settings-button");
   const closeButton = document.querySelector(".close-button");
 
-  settingsButton.onclick = () => (modal.style.display = "block");
+  settingsButton.onclick = () => {
+    modal.style.display = "block";
+  };
   closeButton.onclick = () => (modal.style.display = "none");
   window.onclick = (event) => {
     if (event.target == modal) {
@@ -61,13 +63,12 @@ function setupEventListeners() {
   document
     .getElementById("language-select")
     .addEventListener("change", handleLanguageChange);
-  document.getElementById("export-dit-report").addEventListener("click", () => {
-    // This button now generates a report for the *current* timeline only.
-    window.resolveAPI.exportDitReport([]);
-  });
   document
-    .getElementById("generate-report-button")
-    .addEventListener("click", handleGenerateReportFromSelection);
+    .getElementById("generate-pdf-button")
+    .addEventListener("click", () => handleGenerateReportFromSelection("pdf"));
+  document
+    .getElementById("export-csv-button")
+    .addEventListener("click", () => handleGenerateReportFromSelection("csv"));
   document
     .getElementById("select-all-timelines")
     .addEventListener("click", () => setAllTimelinesSelected(true));
@@ -153,9 +154,15 @@ async function populateTimelineList() {
 
       const label = document.createElement("span");
       label.textContent = timeline.name;
+      label.className = "timeline-name";
+
+      const meta = document.createElement("span");
+      meta.className = "timeline-meta";
+      meta.textContent = `(${timeline.resolution} | ${timeline.frameRate}fps | ${timeline.duration} | ${timeline.clipCount} clips | ${timeline.totalSize})`;
 
       li.appendChild(checkbox);
       li.appendChild(label);
+      li.appendChild(meta);
       timelineListEl.appendChild(li);
     });
 
@@ -214,7 +221,7 @@ function getDragAfterElement(container, y) {
   ).element;
 }
 
-function handleGenerateReportFromSelection() {
+function handleGenerateReportFromSelection(type) {
   const timelineListEl = document.getElementById("timeline-list");
   const selectedTimelines = [];
   const listItems = timelineListEl.querySelectorAll("li");
@@ -227,7 +234,11 @@ function handleGenerateReportFromSelection() {
   });
 
   if (selectedTimelines.length > 0) {
-    window.resolveAPI.exportDitReport(selectedTimelines);
+    if (type === "pdf") {
+      window.resolveAPI.exportPdfReport(selectedTimelines);
+    } else if (type === "csv") {
+      window.resolveAPI.exportCsvReport(selectedTimelines);
+    }
   } else {
     alert("Please select at least one timeline.");
   }

@@ -320,7 +320,43 @@ async function getTimelineList() {
   const timelines = [];
   for (let i = 1; i <= timelineCount; i++) {
     const timeline = await project.GetTimelineByIndex(i);
-    timelines.push({ name: await timeline.GetName() });
+    const frameRate = parseFloat(
+      await timeline.GetSetting("timelineFrameRate"),
+    );
+    const durationFrames =
+      (await timeline.GetEndFrame()) - (await timeline.GetStartFrame());
+
+    let clipCount = 0;
+    let totalSize = 0;
+    const videoTracks = await timeline.GetTrackCount("video");
+    for (let j = 1; j <= videoTracks; j++) {
+      const items = await timeline.GetItemListInTrack("video", j);
+      if (!items) continue;
+      clipCount += items.length;
+      for (const item of items) {
+        const mediaPoolItem = await item.GetMediaPoolItem();
+        if (mediaPoolItem) {
+          const props = await mediaPoolItem.GetClipProperty();
+          if (props && props["File Path"]) {
+            try {
+              const fileStats = fs.statSync(props["File Path"]);
+              totalSize += fileStats.size;
+            } catch (e) {
+              /* ignore */
+            }
+          }
+        }
+      }
+    }
+
+    timelines.push({
+      name: await timeline.GetName(),
+      resolution: `${await timeline.GetSetting("timelineResolutionWidth")}x${await timeline.GetSetting("timelineResolutionHeight")}`,
+      frameRate: frameRate,
+      duration: framesToTimecode(durationFrames, frameRate),
+      clipCount: clipCount,
+      totalSize: formatBytes(totalSize),
+    });
   }
   return timelines;
 }
@@ -360,17 +396,25 @@ async function generatePdfReport(filePath, timelineNames) {
   const customFont = await pdfDoc.embedFont(fontBytes);
 
   try {
+    debugLog("Report generation process started.");
     if (mustSwitchPage) {
-      debugLog(`Temporarily switching to 'edit' page to generate report.`);
-      await resolve.OpenPage("edit");
+      debugLog(
+        `Current page is '${currentPage}'. Temporarily switching to 'edit' page.`,
+      );
+      const switched = await resolve.OpenPage("edit");
+      if (!switched) {
+        debugLog("Failed to switch to Edit page. Aborting.");
+        return;
+      }
     }
 
-    debugLog("Starting PDF report generation...");
     const project = await getCurrentProject();
     if (!project) {
-      debugLog("No project open.");
+      debugLog("No project open. Aborting.");
       return;
     }
+    const projectName = await project.GetName();
+    debugLog(`Project: ${projectName}`);
 
     const timelineCount = await project.GetTimelineCount();
     const timelineMap = new Map();
@@ -380,6 +424,7 @@ async function generatePdfReport(filePath, timelineNames) {
     }
 
     for (const timelineName of timelineNames) {
+      debugLog(`Processing timeline: ${timelineName}`);
       let page = pdfDoc.addPage();
       const { width, height } = page.getSize();
       let y = height - 40;
@@ -387,7 +432,7 @@ async function generatePdfReport(filePath, timelineNames) {
 
       const timeline = timelineMap.get(timelineName);
       if (!timeline) {
-        debugLog(`Timeline "${timelineName}" not found.`);
+        debugLog(`Timeline "${timelineName}" not found. Skipping.`);
         continue;
       }
 
@@ -405,10 +450,30 @@ async function generatePdfReport(filePath, timelineNames) {
           clips.push(...items);
         }
       }
+      debugLog(`Found ${clips.length} clips.`);
 
-      debugLog(`Found ${clips.length} clips in timeline: ${timelineName}`);
+      let totalSize = 0;
+      for (const clip of clips) {
+        const mediaPoolItem = await clip.GetMediaPoolItem();
+        if (mediaPoolItem) {
+          const props = await mediaPoolItem.GetClipProperty();
+          if (props && props["File Path"]) {
+            try {
+              const fileStats = fs.statSync(props["File Path"]);
+              totalSize += fileStats.size;
+            } catch (e) {
+              /* ignore */
+            }
+          }
+        }
+      }
 
-      page.drawText("DIT Report", { x: margin, y, size: 24, font: customFont });
+      page.drawText(`${projectName} - DIT Report`, {
+        x: margin,
+        y,
+        size: 24,
+        font: customFont,
+      });
       y -= 20;
       page.drawText(`Timeline: ${timelineName}`, {
         x: margin,
@@ -417,16 +482,17 @@ async function generatePdfReport(filePath, timelineNames) {
         font: customFont,
       });
       y -= 15;
-      page.drawText(`Generated on: ${new Date().toLocaleString()}`, {
-        x: margin,
-        y,
-        size: 10,
-        font: customFont,
-      });
+      page.drawText(
+        `Stats: ${clips.length} clips | Total Size: ${formatBytes(totalSize)}`,
+        { x: margin, y, size: 10, font: customFont },
+      );
       y -= 25;
 
       for (const [i, clip] of clips.entries()) {
-        const clipBlockHeight = 100;
+        debugLog(
+          `Processing clip ${i + 1}/${clips.length}: ${await clip.GetName()}`,
+        );
+        const clipBlockHeight = 110;
         if (y < margin + clipBlockHeight) {
           page = pdfDoc.addPage();
           y = height - margin;
@@ -443,7 +509,9 @@ async function generatePdfReport(filePath, timelineNames) {
 
         const tempDir = os.tmpdir();
         const tempFilePath = path.join(tempDir, `resolve_thumb_${i}.jpg`);
+        debugLog(`Exporting still to: ${tempFilePath}`);
         const success = await project.ExportCurrentFrameAsStill(tempFilePath);
+        debugLog(`Still export success: ${success}`);
 
         const blockStartY = y;
         const thumbX = margin;
@@ -462,6 +530,7 @@ async function generatePdfReport(filePath, timelineNames) {
               height: jpgDims.height,
             });
             fs.unlinkSync(tempFilePath);
+            debugLog("Thumbnail embedded and temp file deleted.");
           } catch (e) {
             debugLog(`Could not embed image for ${clipName}: ${e.toString()}`);
           }
@@ -491,7 +560,7 @@ async function generatePdfReport(filePath, timelineNames) {
           ? await mediaPoolItem.GetClipProperty()
           : null;
 
-        page.drawText(`${i + 1}. ${clipName}`, {
+        page.drawText(clipName, {
           x: metaX,
           y: metaY,
           font: customFont,
@@ -500,8 +569,13 @@ async function generatePdfReport(filePath, timelineNames) {
         metaY -= lineGap + 5;
 
         const sourceStartTC = props ? props["Start TC"] : "N/A";
-        const sourceEndTC = props ? props["End TC"] : "N/A";
         const sourceDuration = props ? props["Duration"] : "N/A";
+        page.drawText(
+          `Source: ${sourceStartTC} | Duration: ${sourceDuration}`,
+          { x: metaX, y: metaY, font: customFont, size: 9 },
+        );
+        metaY -= lineGap;
+
         const sourceFPS = props ? props["FPS"] : "N/A";
         let fileSize = "N/A";
         if (props && props["File Path"]) {
@@ -512,44 +586,29 @@ async function generatePdfReport(filePath, timelineNames) {
             /* ignore */
           }
         }
+        const resolution = props ? props["Resolution"] || "N/A" : "N/A";
+        page.drawText(
+          `FPS: ${sourceFPS} | Size: ${fileSize} | Res: ${resolution}`,
+          { x: metaX, y: metaY, font: customFont, size: 9 },
+        );
+        metaY -= lineGap;
 
-        page.drawText(`Source TC: ${sourceStartTC} - ${sourceEndTC}`, {
-          x: metaX,
-          y: metaY,
-          font: customFont,
-          size: 9,
-        });
-        metaY -= lineGap;
-        page.drawText(`Duration: ${sourceDuration}`, {
-          x: metaX,
-          y: metaY,
-          font: customFont,
-          size: 9,
-        });
-        metaY -= lineGap;
-        page.drawText(`Frame Rate: ${sourceFPS} fps`, {
-          x: metaX,
-          y: metaY,
-          font: customFont,
-          size: 9,
-        });
-        metaY -= lineGap;
-        page.drawText(`File Size: ${fileSize}`, {
-          x: metaX,
-          y: metaY,
-          font: customFont,
-          size: 9,
-        });
-        metaY -= lineGap;
         if (props) {
-          page.drawText(`Resolution: ${props["Resolution"] || "N/A"}`, {
+          page.drawText(`File Name: ${props["File Name"] || "N/A"}`, {
             x: metaX,
             y: metaY,
             font: customFont,
-            size: 9,
+            size: 7,
           });
-          metaY -= lineGap + 2;
+          metaY -= lineGap;
           page.drawText(`File Path: ${props["File Path"] || "N/A"}`, {
+            x: metaX,
+            y: metaY,
+            font: customFont,
+            size: 7,
+          });
+          metaY -= lineGap;
+          page.drawText(`Proxy Path: ${props["Proxy Media Path"] || "N/A"}`, {
             x: metaX,
             y: metaY,
             font: customFont,
@@ -562,10 +621,12 @@ async function generatePdfReport(filePath, timelineNames) {
       await timeline.SetCurrentTimecode(originalTimecode);
     }
 
+    debugLog("Saving PDF document...");
     const pdfBytes = await pdfDoc.save();
     fs.writeFileSync(filePath, pdfBytes);
     debugLog(`PDF report saved to ${filePath}`);
     shell.openPath(filePath);
+    debugLog("PDF generation complete.");
   } catch (error) {
     debugLog(`Error generating PDF report: ${error.toString()}`);
   } finally {
@@ -573,6 +634,86 @@ async function generatePdfReport(filePath, timelineNames) {
       debugLog(`Switching back to original page: ${currentPage}`);
       await resolve.OpenPage(currentPage);
     }
+  }
+}
+
+async function generateCsvReport(filePath, timelineNames) {
+  const resolve = await getResolve();
+  if (!resolve) {
+    debugLog("Could not get Resolve object for CSV generation.");
+    return;
+  }
+
+  debugLog("Starting CSV report generation...");
+  const project = await getCurrentProject();
+  if (!project) {
+    debugLog("No project open.");
+    return;
+  }
+
+  const allClipsData = [];
+  const allHeaders = new Set(["Timeline Name", "Clip Name"]);
+
+  const timelineCount = await project.GetTimelineCount();
+  const timelineMap = new Map();
+  for (let i = 1; i <= timelineCount; i++) {
+    const tl = await project.GetTimelineByIndex(i);
+    timelineMap.set(await tl.GetName(), tl);
+  }
+
+  for (const timelineName of timelineNames) {
+    const timeline = timelineMap.get(timelineName);
+    if (!timeline) continue;
+
+    const videoTracks = await timeline.GetTrackCount("video");
+    for (let i = 1; i <= videoTracks; i++) {
+      const items = await timeline.GetItemListInTrack("video", i);
+      if (!items) continue;
+
+      for (const item of items) {
+        const clipName = await item.GetName();
+        const mediaPoolItem = await item.GetMediaPoolItem();
+        const props = mediaPoolItem
+          ? await mediaPoolItem.GetClipProperty()
+          : {};
+        const metadata = mediaPoolItem ? await mediaPoolItem.GetMetadata() : {};
+        const allMeta = {
+          ...props,
+          ...metadata,
+          "Timeline Name": timelineName,
+          "Clip Name": clipName,
+        };
+
+        Object.keys(allMeta).forEach((key) => allHeaders.add(key));
+        allClipsData.push(allMeta);
+      }
+    }
+  }
+
+  const sortedHeaders = [...allHeaders].sort();
+
+  const escapeCsvCell = (cell) => {
+    if (cell === null || cell === undefined) return "";
+    const str = String(cell);
+    if (str.includes('"') || str.includes(",") || str.includes("\n")) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const headerRow = sortedHeaders.map(escapeCsvCell).join(",") + "\n";
+  const dataRows = allClipsData
+    .map((row) =>
+      sortedHeaders.map((header) => escapeCsvCell(row[header])).join(","),
+    )
+    .join("\n");
+
+  try {
+    fs.writeFileSync(filePath, headerRow + dataRows);
+    debugLog(`CSV report saved to ${filePath}`);
+    shell.openPath(filePath);
+  } catch (error) {
+    debugLog(`Error writing CSV file: ${error.toString()}`);
   }
 }
 
@@ -585,23 +726,40 @@ function registerResolveEventHandlers() {
   ipcMain.handle("language:load", (event, lang) => loadLanguage(lang));
   ipcMain.on("app:quit", () => app.quit());
 
-  ipcMain.handle("export-dit-report", async (event, timelineNames) => {
+  ipcMain.handle("export-pdf-report", async (event, timelineNames) => {
     const { filePath } = await dialog.showSaveDialog({
-      title: "Export DIT Report",
+      title: "Export PDF Report",
       defaultPath: `DIT_Report_${Date.now()}.pdf`,
       filters: [{ name: "PDF Files", extensions: ["pdf"] }],
     });
 
     if (filePath) {
-      if (timelineNames && timelineNames.length > 0) {
-        generatePdfReport(filePath, timelineNames);
-      } else {
-        // Fallback to current timeline if none are selected
+      if (!timelineNames || timelineNames.length === 0) {
         const project = await getCurrentProject();
         const timeline = await project.GetCurrentTimeline();
-        if (timeline) {
-          generatePdfReport(filePath, [await timeline.GetName()]);
-        }
+        if (timeline) timelineNames = [await timeline.GetName()];
+      }
+      if (timelineNames && timelineNames.length > 0) {
+        generatePdfReport(filePath, timelineNames);
+      }
+    }
+  });
+
+  ipcMain.handle("export-csv-report", async (event, timelineNames) => {
+    const { filePath } = await dialog.showSaveDialog({
+      title: "Export CSV Report",
+      defaultPath: `DIT_Report_${Date.now()}.csv`,
+      filters: [{ name: "CSV Files", extensions: ["csv"] }],
+    });
+
+    if (filePath) {
+      if (!timelineNames || timelineNames.length === 0) {
+        const project = await getCurrentProject();
+        const timeline = await project.GetCurrentTimeline();
+        if (timeline) timelineNames = [await timeline.GetName()];
+      }
+      if (timelineNames && timelineNames.length > 0) {
+        generateCsvReport(filePath, timelineNames);
       }
     }
   });
@@ -609,8 +767,8 @@ function registerResolveEventHandlers() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 600, // Increased height for the new UI
+    width: 1000,
+    height: 700,
     useContentSize: true,
     icon: path.join(__dirname, "img/logo.png"),
     webPreferences: {
@@ -623,7 +781,7 @@ function createWindow() {
   });
 
   mainWindow.loadFile("index.html");
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {

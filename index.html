@@ -16,11 +16,6 @@
                 <span class="separator">|</span>
                 <span id="total-size"></span>
                 <button
-                    id="export-dit-report"
-                    class="custom-button"
-                    data-i18n-key="exportDitReport"
-                ></button>
-                <button
                     id="settings-button"
                     class="custom-button"
                     data-i18n-key="settings"
@@ -63,9 +58,25 @@
             </div>
 
             <div class="timeline-selection-container">
-                <h3 data-i18n-key="timelineSelectionTitle">
-                    Select Timelines for Report
-                </h3>
+                <div class="timeline-header">
+                    <h3 data-i18n-key="timelineSelectionTitle">
+                        Select Timelines for Report
+                    </h3>
+                    <button
+                        id="generate-pdf-button"
+                        class="custom-button"
+                        data-i18n-key="generatePdf"
+                    >
+                        Generate PDF
+                    </button>
+                    <button
+                        id="export-csv-button"
+                        class="custom-button"
+                        data-i18n-key="exportCsv"
+                    >
+                        Export CSV
+                    </button>
+                </div>
                 <div class="timeline-controls">
                     <button
                         id="select-all-timelines"
@@ -84,13 +95,6 @@
                     </button>
                 </div>
                 <ul id="timeline-list" class="timeline-list"></ul>
-                <button
-                    id="generate-report-button"
-                    class="custom-button"
-                    data-i18n-key="generateReport"
-                >
-                    Generate Report
-                </button>
             </div>
         </div>
 
@@ -100,40 +104,42 @@
                 <span class="close-button">&times;</span>
                 <h3 data-i18n-key="settings"></h3>
                 <div class="modal-body">
-                    <div class="form-group">
-                        <label
-                            for="language-select"
-                            data-i18n-key="language"
-                        ></label>
-                        <select id="language-select">
-                            <option value="en">English</option>
-                            <option value="zh">中文</option>
-                        </select>
+                    <div class="form-group inline-group">
+                        <div class="checkbox-item">
+                            <label
+                                for="language-select"
+                                data-i18n-key="language"
+                            ></label>
+                            <select id="language-select">
+                                <option value="en">English</option>
+                                <option value="zh">中文</option>
+                            </select>
+                        </div>
+                        <div class="checkbox-item">
+                            <label
+                                for="auto-refresh"
+                                data-i18n-key="autoRefresh"
+                            ></label>
+                            <input type="checkbox" id="auto-refresh" checked />
+                        </div>
+                        <div class="checkbox-item">
+                            <label
+                                for="refresh-interval"
+                                data-i18n-key="intervalSeconds"
+                            ></label>
+                            <input
+                                type="number"
+                                id="refresh-interval"
+                                value="5"
+                                min="1"
+                            />
+                        </div>
+                        <button
+                            id="refresh-now"
+                            class="custom-button"
+                            data-i18n-key="refreshNow"
+                        ></button>
                     </div>
-                    <div class="form-group">
-                        <label
-                            for="auto-refresh"
-                            data-i18n-key="autoRefresh"
-                        ></label>
-                        <input type="checkbox" id="auto-refresh" checked />
-                    </div>
-                    <div class="form-group">
-                        <label
-                            for="refresh-interval"
-                            data-i18n-key="intervalSeconds"
-                        ></label>
-                        <input
-                            type="number"
-                            id="refresh-interval"
-                            value="5"
-                            min="1"
-                        />
-                    </div>
-                    <button
-                        id="refresh-now"
-                        class="custom-button"
-                        data-i18n-key="refreshNow"
-                    ></button>
                 </div>
             </div>
         </div>

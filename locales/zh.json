@@ -12,5 +12,6 @@
   "timelineSelectionTitle": "选择时间线以生成报告",
   "selectAll": "全选",
   "deselectAll": "取消全选",
-  "generateReport": "生成报告"
+  "generatePdf": "生成PDF",
+  "exportCsv": "导出CSV"
 }

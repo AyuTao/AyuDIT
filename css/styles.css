@@ -80,6 +80,13 @@ body {
     margin-bottom: 10px;
 }
 
+.timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
 .link-button {
     background: none;
     border: none;
@@ -93,9 +100,49 @@ body {
     color: #fff;
 }
 
-.timeline-controls .separator {
-    margin: 0 5px;
-    color: #555;
+.group-label {
+    font-weight: bold;
+    color: #a9a9a9;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.metadata-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.inline-group {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 5px;
+    margin-top: 5px;
+}
+
+#other-fields {
+    max-height: 250px; /* Increased height */
+    overflow-y: auto;
+    border: 1px solid #555;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-item input {
+    margin-right: 5px;
 }
 
 .timeline-list {
@@ -115,6 +162,16 @@ body {
     display: flex;
     align-items: center;
     cursor: move; /* Indicates draggable */
+    gap: 10px;
+}
+
+.timeline-name {
+    font-weight: bold;
+}
+
+.timeline-meta {
+    font-size: 0.8em;
+    color: #a9a9a9;
 }
 
 .timeline-list li:last-child {
@@ -209,14 +266,20 @@ body {
 }
 
 .modal-content {
-    background-color: var(--primary-color);
-    margin: 15% auto;
-    padding: 25px;
-    border: 1px solid var(--secondary-color);
+    background-color: #2d2d2d;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
     width: 80%;
-    max-width: 400px;
-    border-radius: 8px;
+    max-width: 600px;
+    border-radius: 5px;
     position: relative;
+    height: 500px; /* Increased height */
+}
+
+.modal-body {
+    max-height: 350px;
+    overflow-y: auto;
 }
 
 .close-button {

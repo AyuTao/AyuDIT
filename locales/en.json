@@ -12,5 +12,6 @@
   "timelineSelectionTitle": "Select Timelines for Report",
   "selectAll": "Select All",
   "deselectAll": "Deselect All",
-  "generateReport": "Generate Report"
+  "generatePdf": "Generate PDF",
+  "exportCsv": "Export CSV"
 }
