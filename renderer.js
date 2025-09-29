@@ -233,6 +233,12 @@ function handleGenerateReportFromSelection() {
   }
 }
 
+function setAllTimelinesSelected(isSelected) {
+  const timelineListEl = document.getElementById("timeline-list");
+  const checkboxes = timelineListEl.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach((checkbox) => (checkbox.checked = isSelected));
+}
+
 function formatBytes(bytes, decimals = 2) {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;

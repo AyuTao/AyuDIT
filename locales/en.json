@@ -8,5 +8,9 @@
   "autoRefresh": "Auto-refresh",
   "intervalSeconds": "Interval (seconds)",
   "refreshNow": "Refresh Now",
-  "exportDitReport": "Export DIT Report"
+  "exportDitReport": "Export DIT Report",
+  "timelineSelectionTitle": "Select Timelines for Report",
+  "selectAll": "Select All",
+  "deselectAll": "Deselect All",
+  "generateReport": "Generate Report"
 }

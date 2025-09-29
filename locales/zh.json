@@ -8,5 +8,9 @@
   "autoRefresh": "自动刷新",
   "intervalSeconds": "间隔 (秒)",
   "refreshNow": "立即刷新",
-  "exportDitReport": "导出DIT报告"
+  "exportDitReport": "导出DIT报告",
+  "timelineSelectionTitle": "选择时间线以生成报告",
+  "selectAll": "全选",
+  "deselectAll": "取消全选",
+  "generateReport": "生成报告"
 }
