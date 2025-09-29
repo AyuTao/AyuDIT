@@ -62,20 +62,22 @@
                     <h3 data-i18n-key="timelineSelectionTitle">
                         Select Timelines for Report
                     </h3>
-                    <button
-                        id="generate-pdf-button"
-                        class="custom-button"
-                        data-i18n-key="generatePdf"
-                    >
-                        Generate PDF
-                    </button>
-                    <button
-                        id="export-csv-button"
-                        class="custom-button"
-                        data-i18n-key="exportCsv"
-                    >
-                        Export CSV
-                    </button>
+                    <div class="button-group">
+                        <button
+                            id="generate-pdf-button"
+                            class="custom-button"
+                            data-i18n-key="generatePdf"
+                        >
+                            Generate PDF
+                        </button>
+                        <button
+                            id="export-csv-button"
+                            class="custom-button"
+                            data-i18n-key="exportCsv"
+                        >
+                            Export CSV
+                        </button>
+                    </div>
                 </div>
                 <div class="timeline-controls">
                     <button
@@ -140,6 +142,43 @@
                             data-i18n-key="refreshNow"
                         ></button>
                     </div>
+                    <hr />
+                    <div class="form-group">
+                        <label
+                            for="thumbnail-source-select"
+                            data-i18n-key="thumbnailSource"
+                            >Thumbnail Source:</label
+                        >
+                        <select id="thumbnail-source-select">
+                            <option value="first">First Frame</option>
+                            <option value="middle" selected>
+                                Middle Frame
+                            </option>
+                            <option value="last">Last Frame</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Modal -->
+        <div id="progress-modal" class="modal-overlay" style="display: none">
+            <div class="progress-content">
+                <h3 id="progress-title">Generating Report...</h3>
+                <div id="progress-bar-container" class="progress-bar-container">
+                    <div id="progress-bar" class="progress-bar"></div>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div id="progress-completion-actions" style="display: none">
+                    <button id="open-file-button" class="custom-button">
+                        Open File
+                    </button>
+                    <button id="show-folder-button" class="custom-button">
+                        Show in Folder
+                    </button>
+                    <button id="progress-ok-button" class="custom-button">
+                        OK
+                    </button>
                 </div>
             </div>
         </div>

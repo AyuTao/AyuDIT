@@ -12,7 +12,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   currentSettings = await window.resolveAPI.getSettings();
+  if (!currentSettings.thumbnailSource) {
+    currentSettings.thumbnailSource = "middle"; // Default value
+  }
+
   await loadAndApplyLanguage(currentSettings.language || "en");
+  document.getElementById("thumbnail-source-select").value =
+    currentSettings.thumbnailSource;
   setupEventListeners();
   updateDashboard();
   populateTimelineList();
@@ -64,6 +70,9 @@ function setupEventListeners() {
     .getElementById("language-select")
     .addEventListener("change", handleLanguageChange);
   document
+    .getElementById("thumbnail-source-select")
+    .addEventListener("change", handleThumbnailSourceChange);
+  document
     .getElementById("generate-pdf-button")
     .addEventListener("click", () => handleGenerateReportFromSelection("pdf"));
   document
@@ -75,6 +84,10 @@ function setupEventListeners() {
   document
     .getElementById("deselect-all-timelines")
     .addEventListener("click", () => setAllTimelinesSelected(false));
+
+  // Progress modal listeners
+  window.resolveAPI.onGenerationProgress(updateProgress);
+  window.resolveAPI.onGenerationComplete(showCompletionActions);
 }
 
 async function handleLanguageChange(event) {
@@ -82,6 +95,76 @@ async function handleLanguageChange(event) {
   currentSettings.language = newLang;
   await window.resolveAPI.saveSettings(currentSettings);
   await loadAndApplyLanguage(newLang);
+}
+
+async function handleThumbnailSourceChange(event) {
+  const newValue = event.target.value;
+  currentSettings.thumbnailSource = newValue;
+  await window.resolveAPI.saveSettings(currentSettings);
+}
+
+// --- Progress Modal Logic ---
+function showProgressModal() {
+  const modal = document.getElementById("progress-modal");
+  const title = document.getElementById("progress-title");
+  const progressBarContainer = document.getElementById(
+    "progress-bar-container",
+  );
+  const completionActions = document.getElementById(
+    "progress-completion-actions",
+  );
+
+  title.textContent = "Generating Report...";
+  progressBarContainer.style.display = "block";
+  completionActions.style.display = "none";
+  updateProgress({ progress: 0 }); // Reset progress bar
+  modal.style.display = "flex";
+}
+
+function updateProgress({ progress }) {
+  const progressBar = document.getElementById("progress-bar");
+  const progressPercent = document.getElementById("progress-percent");
+  progressBar.style.width = `${progress}%`;
+  progressPercent.textContent = `${Math.round(progress)}%`;
+}
+
+function showCompletionActions({ filePath }) {
+  const title = document.getElementById("progress-title");
+  const progressBarContainer = document.getElementById(
+    "progress-bar-container",
+  );
+  const completionActions = document.getElementById(
+    "progress-completion-actions",
+  );
+  const openFileButton = document.getElementById("open-file-button");
+  const showFolderButton = document.getElementById("show-folder-button");
+  const okButton = document.getElementById("progress-ok-button");
+
+  title.textContent = "Report Generated Successfully";
+  progressBarContainer.style.display = "none";
+  completionActions.style.display = "flex";
+
+  // Clone and replace to remove old listeners
+  const newOpenFileButton = openFileButton.cloneNode(true);
+  openFileButton.parentNode.replaceChild(newOpenFileButton, openFileButton);
+  newOpenFileButton.addEventListener("click", () =>
+    window.resolveAPI.openPath(filePath),
+  );
+
+  const newShowFolderButton = showFolderButton.cloneNode(true);
+  showFolderButton.parentNode.replaceChild(
+    newShowFolderButton,
+    showFolderButton,
+  );
+  newShowFolderButton.addEventListener("click", () =>
+    window.resolveAPI.showItemInFolder(filePath),
+  );
+
+  const newOkButton = okButton.cloneNode(true);
+  okButton.parentNode.replaceChild(newOkButton, okButton);
+  newOkButton.addEventListener("click", () => {
+    document.getElementById("progress-modal").style.display = "none";
+  });
 }
 
 // --- Auto Refresh Logic ---
@@ -234,10 +317,15 @@ function handleGenerateReportFromSelection(type) {
   });
 
   if (selectedTimelines.length > 0) {
+    showProgressModal();
+    const payload = {
+      timelines: selectedTimelines,
+      thumbnailSource: currentSettings.thumbnailSource,
+    };
     if (type === "pdf") {
-      window.resolveAPI.exportPdfReport(selectedTimelines);
+      window.resolveAPI.startPdfReport(payload);
     } else if (type === "csv") {
-      window.resolveAPI.exportCsvReport(selectedTimelines);
+      window.resolveAPI.startCsvReport(payload);
     }
   } else {
     alert("Please select at least one timeline.");

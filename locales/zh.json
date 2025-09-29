@@ -13,5 +13,6 @@
   "selectAll": "全选",
   "deselectAll": "取消全选",
   "generatePdf": "生成PDF",
-  "exportCsv": "导出CSV"
+  "exportCsv": "导出CSV",
+  "thumbnailSource": "缩略图来源"
 }

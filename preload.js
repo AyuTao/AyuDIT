@@ -1,20 +1,23 @@
 const { contextBridge, ipcRenderer } = require("electron/renderer");
 
 contextBridge.exposeInMainWorld("resolveAPI", {
+  // Main -> Renderer
+  onLogMessage: (callback) =>
+    ipcRenderer.on("log:message", (_event, message) => callback(message)),
+  onGenerationProgress: (callback) =>
+    ipcRenderer.on("generation-progress", (_event, data) => callback(data)),
+  onGenerationComplete: (callback) =>
+    ipcRenderer.on("generation-complete", (_event, data) => callback(data)),
+
+  // Renderer -> Main
   getMediaStats: () => ipcRenderer.invoke("resolve:getMediaStats"),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   getTimelineList: () => ipcRenderer.invoke("resolve:getTimelineList"),
-  getAvailableMetadataFields: () =>
-    ipcRenderer.invoke("resolve:getAvailableMetadataFields"),
   saveSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   loadLanguage: (lang) => ipcRenderer.invoke("language:load", lang),
-  exportPdfReport: (timelines) =>
-    ipcRenderer.invoke("export-pdf-report", timelines),
-  exportCsvReport: (timelines) =>
-    ipcRenderer.invoke("export-csv-report", timelines),
-  onLog: (callback) =>
-    ipcRenderer.on("log:error", (_event, ...args) => callback(...args)),
-  onLogMessage: (callback) =>
-    ipcRenderer.on("log:message", (_event, message) => callback(message)),
+  startPdfReport: (payload) => ipcRenderer.send("export-pdf-report", payload),
+  startCsvReport: (payload) => ipcRenderer.send("export-csv-report", payload),
+  openPath: (path) => ipcRenderer.send("shell:openPath", path),
+  showItemInFolder: (path) => ipcRenderer.send("shell:showItemInFolder", path),
   quitApp: () => ipcRenderer.send("app:quit"),
 });

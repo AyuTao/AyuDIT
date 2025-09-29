@@ -13,5 +13,6 @@
   "selectAll": "Select All",
   "deselectAll": "Deselect All",
   "generatePdf": "Generate PDF",
-  "exportCsv": "Export CSV"
+  "exportCsv": "Export CSV",
+  "thumbnailSource": "Thumbnail Source"
 }
