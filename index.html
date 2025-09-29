@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>ayuDITools</title>
+        <link rel="stylesheet" type="text/css" href="./css/styles.css" />
+    </head>
+    <body>
+        <div class="header">
+            <div class="header-title">
+                <img src="img/logo.png" alt="Logo" />
+                <h2 data-i18n-key="dashboardTitle"></h2>
+            </div>
+            <div class="header-info">
+                <span id="project-name"></span>
+                <span class="separator">|</span>
+                <span id="total-size"></span>
+                <button
+                    id="export-dit-report"
+                    class="custom-button"
+                    data-i18n-key="exportDitReport"
+                ></button>
+                <button
+                    id="settings-button"
+                    class="custom-button"
+                    data-i18n-key="settings"
+                ></button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="stats-container">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="icon video">&#9654;</div>
+                        <div class="stat-card-info">
+                            <h4 data-i18n-key="videos"></h4>
+                            <p id="video-count">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon audio">&#9835;</div>
+                        <div class="stat-card-info">
+                            <h4 data-i18n-key="audio"></h4>
+                            <p id="audio-count">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon image">&#9638;</div>
+                        <div class="stat-card-info">
+                            <h4 data-i18n-key="images"></h4>
+                            <p id="image-count">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon timeline">&#8986;</div>
+                        <div class="stat-card-info">
+                            <h4 data-i18n-key="timelines"></h4>
+                            <p id="timeline-count">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="timeline-selection-container">
+                <h3 data-i18n-key="timelineSelectionTitle">
+                    Select Timelines for Report
+                </h3>
+                <div class="timeline-controls">
+                    <button
+                        id="select-all-timelines"
+                        class="link-button"
+                        data-i18n-key="selectAll"
+                    >
+                        Select All
+                    </button>
+                    <span class="separator">|</span>
+                    <button
+                        id="deselect-all-timelines"
+                        class="link-button"
+                        data-i18n-key="deselectAll"
+                    >
+                        Deselect All
+                    </button>
+                </div>
+                <ul id="timeline-list" class="timeline-list"></ul>
+                <button
+                    id="generate-report-button"
+                    class="custom-button"
+                    data-i18n-key="generateReport"
+                >
+                    Generate Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <h3 data-i18n-key="settings"></h3>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label
+                            for="language-select"
+                            data-i18n-key="language"
+                        ></label>
+                        <select id="language-select">
+                            <option value="en">English</option>
+                            <option value="zh">中文</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label
+                            for="auto-refresh"
+                            data-i18n-key="autoRefresh"
+                        ></label>
+                        <input type="checkbox" id="auto-refresh" checked />
+                    </div>
+                    <div class="form-group">
+                        <label
+                            for="refresh-interval"
+                            data-i18n-key="intervalSeconds"
+                        ></label>
+                        <input
+                            type="number"
+                            id="refresh-interval"
+                            value="5"
+                            min="1"
+                        />
+                    </div>
+                    <button
+                        id="refresh-now"
+                        class="custom-button"
+                        data-i18n-key="refreshNow"
+                    ></button>
+                </div>
+            </div>
+        </div>
+
+        <script type="text/javascript" src="./renderer.js"></script>
+    </body>
+</html>

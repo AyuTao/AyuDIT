@@ -1,0 +1,12 @@
+{
+  "dashboardTitle": "ayuDITools Dashboard",
+  "videos": "Videos",
+  "audio": "Audio",
+  "images": "Images",
+  "timelines": "Timelines",
+  "settings": "Settings",
+  "autoRefresh": "Auto-refresh",
+  "intervalSeconds": "Interval (seconds)",
+  "refreshNow": "Refresh Now",
+  "exportDitReport": "Export DIT Report"
+}

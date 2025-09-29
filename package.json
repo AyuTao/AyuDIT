@@ -1,0 +1,16 @@
+{
+  "name": "ayuDITools",
+  "version": "1.0.0",
+  "description": "ayuDITools",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "fontkit": "^2.0.4",
+    "pdf-lib": "^1.17.1",
+    "pdfmake": "^0.2.20",
+    "pngjs": "^7.0.0"
+  }
+}
