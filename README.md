@@ -1,14 +1,14 @@
-# AyuDITools: The Professional, Subscription-Free DIT Software for DaVinci Resolve
+# AyuDIT: The Professional, Subscription-Free DIT Software for DaVinci Resolve
 
-`AyuDITools` is not just a plugin; it is a complete and powerful DIT (Digital Imaging Technician) software solution built directly within DaVinci Resolve Studio. It is designed to be a perfect, subscription-free alternative to expensive annual-fee software like Pomfort Silverstack Lab and Foolcat.
+`AyuDIT` is not just a plugin; it is a complete and powerful DIT (Digital Imaging Technician) software solution built directly within DaVinci Resolve Studio. It is designed to be a perfect, subscription-free alternative to expensive annual-fee software like Pomfort Silverstack Lab and Foolcat.
 
-## Why AyuDITools?
+## Why AyuDIT?
 
-The vision for `AyuDITools` was born from a major shift in the post-production landscape. With DaVinci Resolve 20's native support for Apple ProRes RAW, the platform has become a truly universal tool, capable of handling nearly every format and unifying the entire post-production workflow. 
+The vision for `AyuDIT` was born from a major shift in the post-production landscape. With DaVinci Resolve 20's native support for Apple ProRes RAW, the platform has become a truly universal tool, capable of handling nearly every format and unifying the entire post-production workflow.
 
-This presented a unique opportunity: to leverage the power of Resolve's backend to create a comprehensive DIT tool without the high costs. With `AyuDITools`, you no longer need to pay for expensive annual licenses. All you need is a license for DaVinci Resolve Studio.
+This presented a unique opportunity: to leverage the power of Resolve's backend to create a comprehensive DIT tool without the high costs. With `AyuDIT`, you no longer need to pay for expensive annual licenses. All you need is a license for DaVinci Resolve Studio.
 
-![AyuDITools Screenshot](https://i.imgur.com/your-screenshot-url.png) 
+![AyuDIT Screenshot](https://i.imgur.com/your-screenshot-url.png)
 *(Replace this with a URL to your screenshot)*
 
 ## Features
@@ -31,11 +31,11 @@ This presented a unique opportunity: to leverage the power of Resolve's backend 
 
 For detailed installation instructions, please see the [Installation Guide](INSTALL.md).
 
-1.  Download the latest `AyuDITools.zip` from the [releases page](https://github.com/AyuTao/AyuDITools/releases).
+1.  Download the latest `AyuDIT.zip` from the [releases page](https://github.com/AyuTao/AyuDIT/releases).
 2.  Unzip the file.
-3.  Copy the entire `AyuDITools` folder to the Resolve Workflow Integration Plugins directory.
+3.  Copy the entire `AyuDIT` folder to the Resolve Workflow Integration Plugins directory.
 4.  Restart DaVinci Resolve.
-5.  Launch from `Workspace` > `Workflow Integrations` > `AyuDITools`.
+5.  Launch from `Workspace` > `Workflow Integrations` > `AyuDIT`.
 
 ## Usage
 

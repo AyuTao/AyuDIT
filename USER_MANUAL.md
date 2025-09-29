@@ -1,6 +1,6 @@
-# AyuDITools - User Manual
+# AyuDIT - User Manual
 
-Welcome to the AyuDITools plugin for DaVinci Resolve! This guide explains how to use its features to monitor your project and generate professional DIT reports.
+Welcome to the AyuDIT plugin for DaVinci Resolve! This guide explains how to use its features to monitor your project and generate professional DIT reports.
 
 ## 1. Main Dashboard
 

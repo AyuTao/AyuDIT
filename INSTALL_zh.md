@@ -1,6 +1,6 @@
-# AyuDITools - 安装部署说明
+# AyuDIT - 安装部署说明
 
-本指南将引导您完成 AyuDITools 插件在 DaVinci Resolve Studio 中的安装过程。
+本指南将引导您完成 AyuDIT 插件在 DaVinci Resolve Studio 中的安装过程。
 
 ## 系统要求
 
@@ -10,13 +10,13 @@
 ## 安装步骤
 
 1.  **下载插件**
-    -   从 [GitHub Releases](https://github.com/AyuTao/AyuDITools/releases) 页面下载最新的发行包 (`AyuDITools.zip`)。
+    -   从 [GitHub Releases](https://github.com/AyuTao/AyuDIT/releases) 页面下载最新的发行包 (`AyuDIT.zip`)。
 
 2.  **解压文件**
-    -   解压下载的 `AyuDITools.zip` 文件，您会得到一个名为 `AyuDITools` 的文件夹。
+    -   解压下载的 `AyuDIT.zip` 文件，您会得到一个名为 `AyuDIT` 的文件夹。
 
 3.  **拷贝插件文件夹**
-    -   将整个 `AyuDITools` 文件夹拷贝到达芬奇的 “Workflow Integration Plugins” 目录中。
+    -   将整个 `AyuDIT` 文件夹拷贝到达芬奇的 “Workflow Integration Plugins” 目录中。
 
     -   **在 macOS 系统:**
         -   该目录位于:
@@ -32,6 +32,6 @@
 
 5.  **启动插件**
     -   重启后，您可以在达芬奇的顶部菜单中找到并启动本插件：
-    -   `工作区 (Workspace)` -> `工作流程集成 (Workflow Integrations)` -> `AyuDITools`
+    -   `工作区 (Workspace)` -> `工作流程集成 (Workflow Integrations)` -> `AyuDIT`
 
 至此，安装完成。祝您使用愉快！

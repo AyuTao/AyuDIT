@@ -1,14 +1,14 @@
-# AyuDITools：为达芬奇打造的、无需订阅的专业DIT软件
+# AyuDIT：为达芬奇打造的、无需订阅的专业DIT软件
 
-`AyuDITools` 不仅仅是一个插件，它是直接构建在 DaVinci Resolve Studio 内部的一套完整而强大的DIT（数字影像工程师）软件解决方案。我们的目标是成为 **Pomfort Silverstack Lab**、**Foolcat** 等昂贵年度订阅软件的完美替代品，并且**完全免费**。
+`AyuDIT` 不仅仅是一个插件，它是直接构建在 DaVinci Resolve Studio 内部的一套完整而强大的DIT（数字影像工程师）软件解决方案。我们的目标是成为 **Pomfort Silverstack Lab**、**Foolcat** 等昂贵年度订阅软件的完美替代品，并且**完全免费**。
 
-## 为什么选择 AyuDITools？
+## 为什么选择 AyuDIT？
 
-`AyuDITools` 的愿景诞生于后期制作领域的一次重大变革。随着达芬奇20版本开始原生支持 **Apple ProRes RAW**，这个平台已经成为一个真正意义上的“万金油”工具，能够处理几乎所有格式，并统一整个后期制作流程。
+`AyuDIT` 的愿景诞生于后期制作领域的一次重大变革。随着达芬奇20版本开始原生支持 **Apple ProRes RAW**，这个平台已经成为一个真正意义上的“万金油”工具，能够处理几乎所有格式，并统一整个后期制作流程。
 
-这为我们提供了一个独特的机会：利用达芬奇强大的后端，创造一个功能全面但无需高昂成本的DIT工具。有了`AyuDITools`，您不再需要支付昂贵的年费。您所需要的，仅仅是一个达芬奇Studio版的许可证。
+这为我们提供了一个独特的机会：利用达芬奇强大的后端，创造一个功能全面但无需高昂成本的DIT工具。有了`AyuDIT`，您不再需要支付昂贵的年费。您所需要的，仅仅是一个达芬奇Studio版的许可证。
 
-![AyuDITools 软件截图](https://i.imgur.com/your-screenshot-url.png) 
+![AyuDIT 软件截图](https://i.imgur.com/your-screenshot-url.png)
 *(请将此链接替换为您自己的软件截图链接)*
 
 ## 核心功能
@@ -31,11 +31,11 @@
 
 详细的安装步骤，请参阅 [安装部署说明](INSTALL_zh.md)。
 
-1.  从 [发行版页面](https://github.com/AyuTao/AyuDITools/releases) 下载最新的 `AyuDITools.zip`。
+1.  从 [发行版页面](https://github.com/AyuTao/AyuDIT/releases) 下载最新的 `AyuDIT.zip`。
 2.  解压文件。
-3.  将整个 `AyuDITools` 文件夹拷贝到达芬奇的工作流程集成插件目录。
+3.  将整个 `AyuDIT` 文件夹拷贝到达芬奇的工作流程集成插件目录。
 4.  重启达芬奇。
-5.  从 `工作区` > `工作流程集成` > `AyuDITools` 启动插件。
+5.  从 `工作区` > `工作流程集成` > `AyuDIT` 启动插件。
 
 ## 使用方法
 

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <BlackmagicDesign>
     <Plugin>
-        <Id>com.ayudish.resolve.ayuditools</Id>
-        	<Name>AyuDITools</Name>        <Version>1.0</Version>
-        <Description>ayuDITools</Description>
+        <Id>com.AyuDITsh.resolve.AyuDIT</Id>
+        	<Name>AyuDIT</Name>        <Version>1.0</Version>
+        <Description>AyuDIT</Description>
         <FilePath>main.js</FilePath>
     </Plugin>
 </BlackmagicDesign>

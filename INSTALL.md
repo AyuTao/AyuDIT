@@ -1,6 +1,6 @@
-# AyuDITools - Installation Guide
+# AyuDIT - Installation Guide
 
-This guide will walk you through the installation of the AyuDITools plugin for DaVinci Resolve Studio.
+This guide will walk you through the installation of the AyuDIT plugin for DaVinci Resolve Studio.
 
 ## Prerequisites
 
@@ -10,13 +10,13 @@ This guide will walk you through the installation of the AyuDITools plugin for D
 ## Installation Steps
 
 1.  **Download the Plugin**
-    -   Download the latest release package (`AyuDITools.zip`) from the [GitHub Releases](https://github.com/AyuTao/AyuDITools/releases) page.
+    -   Download the latest release package (`AyuDIT.zip`) from the [GitHub Releases](https://github.com/AyuTao/AyuDIT/releases) page.
 
 2.  **Unzip the Package**
-    -   Unzip the downloaded `AyuDITools.zip` file. You will get a folder named `AyuDITools`.
+    -   Unzip the downloaded `AyuDIT.zip` file. You will get a folder named `AyuDIT`.
 
 3.  **Copy to Plugins Folder**
-    -   Copy the entire `AyuDITools` folder into the DaVinci Resolve "Workflow Integration Plugins" directory on your system.
+    -   Copy the entire `AyuDIT` folder into the DaVinci Resolve "Workflow Integration Plugins" directory on your system.
 
     -   **On macOS:**
         -   The folder is located at:
@@ -32,6 +32,6 @@ This guide will walk you through the installation of the AyuDITools plugin for D
 
 5.  **Launch the Plugin**
     -   Once restarted, you can find and launch the plugin from the DaVinci Resolve menu:
-    -   `Workspace` -> `Workflow Integrations` -> `AyuDITools`
+    -   `Workspace` -> `Workflow Integrations` -> `AyuDIT`
 
 Installation is now complete. Enjoy the tool!
