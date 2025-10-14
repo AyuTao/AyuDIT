@@ -8,7 +8,7 @@
 
 这为我们提供了一个独特的机会：利用达芬奇强大的后端，创造一个功能全面但无需高昂成本的DIT工具。有了`AyuDIT`，您不再需要支付昂贵的年费。您所需要的，仅仅是一个达芬奇Studio版的许可证。
 
-![AyuDIT 软件截图](https://i.imgur.com/your-screenshot-url.png)
+![AyuDIT 软件截图](https://github.com/AyuTao/AyuDIT/blob/main/img/donate_wechat.png)
 *(请将此链接替换为您自己的软件截图链接)*
 
 ## 核心功能
