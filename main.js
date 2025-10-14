@@ -88,21 +88,36 @@ Menu.setApplicationMenu(menu);
 // --- Settings Management ---
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
 
+function detectDefaultLanguage() {
+  try {
+    const locale = (app.getLocale && app.getLocale()) || process.env.LANG || "en";
+    const lc = String(locale).toLowerCase();
+    // zh, zh-cn, zh-tw, zh_hans, etc.
+    if (lc.startsWith("zh")) return "zh";
+    return "en";
+  } catch (_) {
+    return "en";
+  }
+}
+
 function getSettings() {
   try {
     if (fs.existsSync(settingsPath)) {
       const settingsData = fs.readFileSync(settingsPath);
       const s = JSON.parse(settingsData);
       // Backfill defaults for newly added settings
-      if (typeof s.thumbnailSource === "undefined") s.thumbnailSource = "middle";
-      if (typeof s.reportLogoPath === "undefined") s.reportLogoPath = DEFAULT_LOGO_PATH;
-      if (typeof s.coverPageEnabled === "undefined") s.coverPageEnabled = true;
-      if (typeof s.coverDITName === "undefined") s.coverDITName = "";
-      if (typeof s.coverCustomFieldsText === "undefined") s.coverCustomFieldsText = "";
+      let updated = false;
+      if (typeof s.language === "undefined") { s.language = detectDefaultLanguage(); updated = true; }
+      if (typeof s.thumbnailSource === "undefined") { s.thumbnailSource = "middle"; updated = true; }
+      if (typeof s.reportLogoPath === "undefined") { s.reportLogoPath = DEFAULT_LOGO_PATH; updated = true; }
+      if (typeof s.coverPageEnabled === "undefined") { s.coverPageEnabled = true; updated = true; }
+      if (typeof s.coverDITName === "undefined") { s.coverDITName = ""; updated = true; }
+      if (typeof s.coverCustomFieldsText === "undefined") { s.coverCustomFieldsText = ""; updated = true; }
+      if (updated) fs.writeFileSync(settingsPath, JSON.stringify(s));
       return s;
     } else {
       const defaultSettings = {
-        language: "en",
+        language: detectDefaultLanguage(),
         thumbnailSource: "middle",
         reportLogoPath: DEFAULT_LOGO_PATH,
         coverPageEnabled: true,
@@ -115,7 +130,7 @@ function getSettings() {
   } catch (error) {
     console.error("Failed to get settings:", error);
     return {
-      language: "en",
+      language: detectDefaultLanguage(),
       thumbnailSource: "middle",
       reportLogoPath: DEFAULT_LOGO_PATH,
       coverPageEnabled: true,
@@ -919,6 +934,11 @@ async function generateCsvReport(
   const resolve = await getResolve();
   if (!resolve) return;
 
+  // Some APIs behave more reliably on Edit/Color pages
+  const supportedPages = ["edit", "color", "cut", "fairlight", "deliver"];
+  const currentPage = await resolve.GetCurrentPage();
+  const mustSwitchPage = !supportedPages.includes(currentPage);
+
   const project = await getCurrentProject();
   if (!project) return;
 
@@ -933,53 +953,76 @@ async function generateCsvReport(
   }
 
   let totalClipsToProcess = 0;
-  for (const timelineName of timelineNames) {
-    const timeline = timelineMap.get(timelineName);
-    if (!timeline) continue;
-    const videoTracks = await timeline.GetTrackCount("video");
-    for (let i = 1; i <= videoTracks; i++) {
-      const items = (await timeline.GetItemListInTrack("video", i)) || [];
-      totalClipsToProcess += items.length;
-    }
-  }
   let clipsProcessed = 0;
+  // Emit an initial progress update so the bar doesn't look stuck
+  try { progressCb({ progress: 0 }); } catch (_) {}
 
-  for (const timelineName of timelineNames) {
-    const timeline = timelineMap.get(timelineName);
-    if (!timeline) continue;
+  try {
+    if (mustSwitchPage) {
+      await resolve.OpenPage("edit");
+    }
 
-    const videoTracks = await timeline.GetTrackCount("video");
-    for (let i = 1; i <= videoTracks; i++) {
-      const items = await timeline.GetItemListInTrack("video", i);
-      if (!items) continue;
+    // Now that we're on a supported page, compute total items safely
+    debugLog(`[CSV] Start export. Timelines: ${timelineNames.join(", ")}`);
+    for (const timelineName of timelineNames) {
+      const timeline = timelineMap.get(timelineName);
+      if (!timeline) continue;
+      // 确保设为当前时间线，部分项目下未设定会导致 API 阻塞或返回异常
+      try { await project.SetCurrentTimeline(timeline); } catch (_) {}
+      const videoTracks = await timeline.GetTrackCount("video");
+      for (let i = 1; i <= videoTracks; i++) {
+        const raw = await timeline.GetItemListInTrack("video", i);
+        const items = Array.isArray(raw) ? raw : Object.values(raw || {});
+        totalClipsToProcess += items.length;
+      }
+      debugLog(`[CSV] ${timelineName} total items so far: ${totalClipsToProcess}`);
+    }
+    if (totalClipsToProcess === 0) {
+      debugLog("[CSV] No items found in selected timelines. Writing header-only CSV.");
+    }
 
-      for (const item of items) {
-        clipsProcessed++;
-        progressCb({ progress: (clipsProcessed / totalClipsToProcess) * 100 });
+    for (const timelineName of timelineNames) {
+      const timeline = timelineMap.get(timelineName);
+      if (!timeline) continue;
+      try { await project.SetCurrentTimeline(timeline); } catch (_) {}
 
-        let mediaPoolItem;
-        try {
-          mediaPoolItem = await item.GetMediaPoolItem();
-        } catch (e) {
-          continue;
+      const videoTracks = await timeline.GetTrackCount("video");
+      for (let i = 1; i <= videoTracks; i++) {
+        const raw = await timeline.GetItemListInTrack("video", i);
+        const items = Array.isArray(raw) ? raw : Object.values(raw || {});
+        if (!items || items.length === 0) continue;
+
+        for (const item of items) {
+          clipsProcessed++;
+          const denom = Math.max(totalClipsToProcess, 1);
+          progressCb({ progress: (clipsProcessed / denom) * 100 });
+
+          let mediaPoolItem;
+          try {
+            mediaPoolItem = await item.GetMediaPoolItem();
+          } catch (e) {
+            continue;
+          }
+          if (!mediaPoolItem) continue;
+
+          let clipName = "";
+          try { clipName = await item.GetName(); } catch (_) {}
+          let props = {};
+          let metadata = {};
+          try { props = await mediaPoolItem.GetClipProperty(); } catch (_) {}
+          try { metadata = await mediaPoolItem.GetMetadata(); } catch (_) {}
+          const allMeta = {
+            ...props,
+            ...metadata,
+            "Timeline Name": timelineName,
+            "Clip Name": clipName,
+          };
+
+          Object.keys(allMeta).forEach((key) => allHeaders.add(key));
+          allClipsData.push(allMeta);
         }
-        if (!mediaPoolItem) continue;
-
-        const clipName = await item.GetName();
-        const props = await mediaPoolItem.GetClipProperty();
-        const metadata = await mediaPoolItem.GetMetadata();
-        const allMeta = {
-          ...props,
-          ...metadata,
-          "Timeline Name": timelineName,
-          "Clip Name": clipName,
-        };
-
-        Object.keys(allMeta).forEach((key) => allHeaders.add(key));
-        allClipsData.push(allMeta);
       }
     }
-  }
 
   const sortedHeaders = [...allHeaders].sort();
 
@@ -999,17 +1042,29 @@ async function generateCsvReport(
     )
     .join("\n");
 
-  try {
-    fs.writeFileSync(filePath, headerRow + dataRows);
-    if (progressWindow) {
-      progressWindow.webContents.send("generation-complete", { filePath });
+    try {
+      fs.writeFileSync(filePath, headerRow + dataRows);
+      if (progressWindow) {
+        progressWindow.webContents.send("generation-complete", { filePath });
+      }
+    } catch (error) {
+      debugLog(`Error writing CSV file: ${error.toString()}`);
+      if (progressWindow) {
+        progressWindow.webContents.send("generation-complete", {
+          error: error.toString(),
+        });
+      }
     }
   } catch (error) {
-    debugLog(`Error writing CSV file: ${error.toString()}`);
+    debugLog(`Error generating CSV report: ${error.toString()}`);
     if (progressWindow) {
       progressWindow.webContents.send("generation-complete", {
         error: error.toString(),
       });
+    }
+  } finally {
+    if (mustSwitchPage) {
+      await resolve.OpenPage(currentPage);
     }
   }
 }

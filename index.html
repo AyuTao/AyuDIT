@@ -103,6 +103,11 @@
                 <path fill-rule="evenodd" d="M12 .5C5.648.5.5 5.648.5 12c0 5.088 3.292 9.396 7.864 10.915.575.105.786-.25.786-.556 0-.274-.01-1.002-.015-1.968-3.2.695-3.877-1.543-3.877-1.543-.523-1.329-1.277-1.684-1.277-1.684-1.044-.714.08-.7.08-.7 1.155.081 1.763 1.186 1.763 1.186 1.027 1.761 2.695 1.253 3.35.958.104-.744.402-1.253.73-1.541-2.555-.291-5.242-1.278-5.242-5.686 0-1.256.448-2.282 1.183-3.086-.119-.29-.512-1.461.112-3.046 0 0 .964-.309 3.162 1.179a10.96 10.96 0 0 1 2.879-.387c.977.005 1.962.131 2.879.387 2.197-1.488 3.159-1.179 3.159-1.179.626 1.585.233 2.756.114 3.046.737.804 1.182 1.83 1.182 3.086 0 4.418-2.693 5.392-5.257 5.678.413.356.78 1.056.78 2.13 0 1.539-.014 2.778-.014 3.157 0 .309.208.668.793.554C20.212 21.392 23.5 17.086 23.5 12 23.5 5.648 18.352.5 12 .5Z"/>
             </svg>
         </button>
+        <button id="issue-fab" class="github-fab" aria-label="Report Bug" title="Report Bug">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 8h-2.1c-.3-.8-.8-1.5-1.5-2l1.5-1.5c.4-.4.4-1 0-1.4s-1-.4-1.4 0L14.5 4.1c-.6-.3-1.3-.5-2-.6V2h-1v1.5c-.7.1-1.4.3-2 .6L7.5 3.1c-.4-.4-1-.4-1.4 0s-.4 1 0 1.4L7.6 6c-.7.5-1.2 1.2-1.5 2H4c-.6 0-1 .4-1 1s.4 1 1 1h2c0 .3 0 .7.1 1H4c-.6 0-1 .4-1 1s.4 1 1 1h2.4c.8 2.8 3.3 5 6.2 5s5.4-2.1 6.2-5H20c.6 0 1-.4 1-1s-.4-1-1-1h-2.1c.1-.3.1-.7.1-1h2c.6 0 1-.4 1-1s-.4-1-1-1zM12 19c-2.5 0-4.5-2-4.5-4.5V10c0-2.5 2-4.5 4.5-4.5S16.5 7.5 16.5 10v4.5c0 2.5-2 4.5-4.5 4.5zm0-9c.6 0 1 .4 1 1v1c0 .6-.4 1-1 1s-1-.4-1-1v-1c0-.6.4-1 1-1z"/>
+                    </svg>
+                </button>
     </div>
 
     <!-- Donate Modal -->
@@ -173,13 +178,22 @@
                         
                     </div>
                     <hr />
-                    <div class="form-group">
-                        <label for="thumbnail-source-select" data-i18n-key="thumbnailSource"></label>
-                        <select id="thumbnail-source-select">
-                            <option value="first" data-i18n-key="firstFrame"></option>
-                            <option value="middle" selected data-i18n-key="middleFrame"></option>
-                            <option value="last" data-i18n-key="lastFrame"></option>
-                        </select>
+                    <div class="form-group form-row">
+                        <label data-i18n-key="thumbnailSource"></label>
+                        <div class="radio-group inline">
+                            <label class="radio-item">
+                                <input type="radio" name="thumb-source" value="first" id="thumb-src-first" />
+                                <span data-i18n-key="firstShort"></span>
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" name="thumb-source" value="middle" id="thumb-src-middle" />
+                                <span data-i18n-key="middleShort"></span>
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" name="thumb-source" value="last" id="thumb-src-last" />
+                                <span data-i18n-key="lastShort"></span>
+                            </label>
+                        </div>
                     </div>
                     <hr>
                     <div class="form-group">
@@ -199,9 +213,9 @@
                             <input type="checkbox" id="cover-enabled" checked>
                             <label for="cover-enabled" data-i18n-key="enableCoverPage"></label>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group form-row">
                             <label for="cover-dit-name" data-i18n-key="ditName"></label>
-                            <input type="text" id="cover-dit-name" placeholder="DIT">
+                            <input type="text" id="cover-dit-name" placeholder="DIT" class="text-input">
                         </div>
                         <div class="form-group">
                             <label for="cover-custom-fields" data-i18n-key="customFields"></label>

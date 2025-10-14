@@ -31,8 +31,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   await loadAndApplyLanguage(currentSettings.language || "en");
-  document.getElementById("thumbnail-source-select").value =
-    currentSettings.thumbnailSource;
+  // 设置缩略图来源单选框
+  const thumbVal = currentSettings.thumbnailSource || "middle";
+  const radioToCheck = document.querySelector(`input[name="thumb-source"][value="${thumbVal}"]`);
+  if (radioToCheck) radioToCheck.checked = true;
   const coverEnabledEl = document.getElementById("cover-enabled");
   if (coverEnabledEl) coverEnabledEl.checked = !!currentSettings.coverPageEnabled;
   const coverDitEl = document.getElementById("cover-dit-name");
@@ -70,6 +72,12 @@ async function loadAndApplyLanguage(lang) {
     const label = i18nData.github || "GitHub";
     githubFab.setAttribute("title", label);
     githubFab.setAttribute("aria-label", label);
+  }
+  const issueFab2 = document.getElementById("issue-fab");
+  if (issueFab2) {
+    const label = i18nData.reportBug || "Report Bug";
+    issueFab2.setAttribute("title", label);
+    issueFab2.setAttribute("aria-label", label);
   }
 }
 
@@ -114,9 +122,10 @@ function setupEventListeners() {
   document
     .getElementById("language-select")
     .addEventListener("change", handleLanguageChange);
-  document
-    .getElementById("thumbnail-source-select")
-    .addEventListener("change", handleThumbnailSourceChange);
+  // 缩略图来源单选框事件
+  document.querySelectorAll('input[name="thumb-source"]').forEach((el) => {
+    el.addEventListener("change", handleThumbnailSourceChange);
+  });
   const coverEnabled = document.getElementById("cover-enabled");
   if (coverEnabled) coverEnabled.addEventListener("change", handleCoverEnabledChange);
   const coverDit = document.getElementById("cover-dit-name");
@@ -164,6 +173,14 @@ function setupEventListeners() {
   if (githubFab) {
     githubFab.addEventListener("click", () => {
       window.resolveAPI.openExternal("https://github.com/AyuTao/AyuDIT");
+    });
+  }
+
+  // Issue (bug report) button - bottom-right
+  const issueFab = document.getElementById("issue-fab");
+  if (issueFab) {
+    issueFab.addEventListener("click", () => {
+      window.resolveAPI.openExternal("https://github.com/AyuTao/AyuDIT/issues/new");
     });
   }
 
@@ -236,7 +253,8 @@ async function handleLanguageChange(event) {
 }
 
 async function handleThumbnailSourceChange(event) {
-  const newValue = event.target.value;
+  const checked = document.querySelector('input[name="thumb-source"]:checked');
+  const newValue = checked ? checked.value : "middle";
   currentSettings.thumbnailSource = newValue;
   await window.resolveAPI.saveSettings(currentSettings);
 }
