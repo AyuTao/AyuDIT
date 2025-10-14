@@ -1,12 +1,43 @@
-# macOS
+# macOS / Windows
 .DS_Store
+Thumbs.db
 
-# Node
-node_modules
+# Node / package managers
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# IDEs
+# Build artifacts / archives
+dist/
+build/
+out/
+*.map
+*.zip
+*.7z
+*.tar
+*.tgz
+
+# Logs / caches / coverage
+*.log
+.cache/
+coverage/
+.nyc_output/
+
+# Env / local
+.env
+.env.*
+*.local
+
+# IDEs / editors
 .vscode/
 .idea/
+
+# Design sources
+*.psd
+
+# Local dev docs (not needed on GitHub)
+开发文档/
+
+

@@ -1,37 +1,37 @@
-# AyuDIT - Installation Guide
+# AyuDIT - 安装部署说明
 
-This guide will walk you through the installation of the AyuDIT plugin for DaVinci Resolve Studio.
+本指南将引导您完成 AyuDIT 插件在 DaVinci Resolve Studio 中的安装过程。
 
-## Prerequisites
+## 系统要求
 
-- DaVinci Resolve Studio 20.2 or later.
-- Administrator access to your computer.
+- DaVinci Resolve Studio 20.2 或更高版本。
+- 您电脑的管理员权限。
 
-## Installation Steps
+## 安装步骤
 
-1.  **Download the Plugin**
-    -   Download the latest release package (`AyuDIT.zip`) from the [GitHub Releases](https://github.com/AyuTao/AyuDIT/releases) page.
+1.  **下载插件**
+    -   从 [GitHub Releases](https://github.com/AyuTao/AyuDIT/releases) 页面下载最新的发行包 (`AyuDIT.zip`)。
 
-2.  **Unzip the Package**
-    -   Unzip the downloaded `AyuDIT.zip` file. You will get a folder named `AyuDIT`.
+2.  **解压文件**
+    -   解压下载的 `AyuDIT.zip` 文件，您会得到一个名为 `AyuDIT` 的文件夹。
 
-3.  **Copy to Plugins Folder**
-    -   Copy the entire `AyuDIT` folder into the DaVinci Resolve "Workflow Integration Plugins" directory on your system.
+3.  **拷贝插件文件夹**
+    -   将整个 `AyuDIT` 文件夹拷贝到达芬奇的 “Workflow Integration Plugins” 目录中。
 
-    -   **On macOS:**
-        -   The folder is located at:
+    -   **在 macOS 系统:**
+        -   该目录位于:
         -   `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/`
 
-    -   **On Windows:**
-        -   The folder is located at:
+    -   **在 Windows 系统:**
+        -   该目录位于:
         -   `%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins\`
-        -   You can copy and paste this path into your File Explorer address bar.
+        -   您可以直接将此路径复制并粘贴到文件资源管理器的地址栏中访问。
 
-4.  **Restart DaVinci Resolve**
-    -   If DaVinci Resolve is running, please close and restart it completely.
+4.  **重启达芬奇**
+    -   如果达芬奇正在运行，请完全关闭并重启它。
 
-5.  **Launch the Plugin**
-    -   Once restarted, you can find and launch the plugin from the DaVinci Resolve menu:
-    -   `Workspace` -> `Workflow Integrations` -> `AyuDIT`
+5.  **启动插件**
+    -   重启后，您可以在达芬奇的顶部菜单中找到并启动本插件：
+    -   `工作区 (Workspace)` -> `工作流程集成 (Workflow Integrations)` -> `AyuDIT`
 
-Installation is now complete. Enjoy the tool!
+至此，安装完成。祝您使用愉快！

@@ -106,7 +106,7 @@ body {
     list-style-type: none;
     padding: 0;
     margin-top: 10px;
-    max-height: 200px;
+    max-height: 300px;
     overflow-y: auto;
     border: 1px solid #555;
     border-radius: 4px;
@@ -144,7 +144,7 @@ body {
 .modal {
     display: none;
     position: fixed;
-    z-index: 1;
+    z-index: 10000;
     left: 0;
     top: 0;
     width: 100%;
@@ -159,15 +159,19 @@ body {
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
-    max-width: 600px;
+    max-width: 560px;
     border-radius: 5px;
     position: relative;
-    height: 500px;
+    min-height: 200px;
+    max-height: 80vh;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .modal-body {
-    max-height: 350px;
+    max-height: 60vh;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .close-button {
@@ -209,6 +213,38 @@ body {
 
 .checkbox-item input {
     margin-right: 5px;
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.radio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.radio-item input[type="radio"] {
+    margin: 0;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #444;
+}
+
+.modal-buttons .custom-button {
+    min-width: 150px;
+    padding: 12px 20px;
+    font-size: 14px;
 }
 
 .group-label {
@@ -265,6 +301,23 @@ body {
     cursor: not-allowed;
 }
 
+/* Inputs full-width and safe sizing */
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+#cover-custom-fields {
+    resize: vertical;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 .link-button {
     background: none;
     border: none;
@@ -277,6 +330,109 @@ body {
 .link-button:hover {
     color: #fff;
 }
+
+/* Icon button (refresh) */
+.icon-button {
+    background: none;
+    border: none;
+    color: #a9a9a9;
+    cursor: pointer;
+    font-size: 24px;
+    line-height: 1;
+    padding: 4px 6px;
+}
+
+.icon-button:hover {
+    color: #fff;
+}
+
+/* Donate floating action button */
+/* Floating action buttons group */
+.fab-group {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 9998;
+    display: flex;
+    gap: 8px;
+}
+
+.donate-fab {
+    background-color: #0e639c;
+    color: #fff;
+    border: none;
+    border-radius: 24px;
+    padding: 12px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+.donate-fab:hover { background-color: #1177bb; }
+
+/* Override positioning inside group */
+.fab-group .donate-fab,
+.fab-group .github-fab {
+    position: static;
+}
+
+.github-fab {
+    background-color: #24292f;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+.github-fab:hover { background-color: #2f363d; }
+.github-icon { width: 20px; height: 20px; fill: #fff; }
+
+/* Donate modal content */
+.donate-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 10px;
+}
+.donate-item { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.donate-item h4 { margin: 6px 0; text-align: center; }
+.donate-qr {
+    width: 100%;
+    max-width: 220px;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+    border: 1px solid #444;
+    background: #1f1f1f;
+    border-radius: 6px;
+    display: block;
+    margin: 0 auto;
+}
+.donate-paypal {
+    margin-top: 12px;
+    text-align: center;
+}
+.donate-paypal a { color: #61afef; text-decoration: none; }
+.donate-paypal a:hover { text-decoration: underline; }
+
+/* PayPal button styling */
+.paypal-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #0070ba;
+    color: #fff !important;
+    padding: 12px 18px;
+    border-radius: 999px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+.paypal-button:hover { background: #005c99; }
+.paypal-icon { width: 18px; height: 18px; fill: #fff; display: inline-block; }
 
 .timeline-controls .separator {
     margin: 0 5px;
@@ -331,4 +487,22 @@ body {
     display: flex;
     justify-content: center;
     gap: 10px;
+}
+
+/* Scrollbar styling for dark theme */
+/* Applies to all scrollable containers */
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+*::-webkit-scrollbar-track {
+    background: #2a2a2a;
+    border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb {
+    background: #5a5a5a;
+    border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+    background: #6a6a6a;
 }

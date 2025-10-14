@@ -20,10 +20,25 @@ window.addEventListener("DOMContentLoaded", async () => {
   if (!currentSettings.reportLogoPath) {
     currentSettings.reportLogoPath = DEFAULT_LOGO_PATH;
   }
+  if (typeof currentSettings.coverPageEnabled === "undefined") {
+    currentSettings.coverPageEnabled = true;
+  }
+  if (typeof currentSettings.coverDITName === "undefined") {
+    currentSettings.coverDITName = "";
+  }
+  if (typeof currentSettings.coverCustomFieldsText === "undefined") {
+    currentSettings.coverCustomFieldsText = "";
+  }
 
   await loadAndApplyLanguage(currentSettings.language || "en");
   document.getElementById("thumbnail-source-select").value =
     currentSettings.thumbnailSource;
+  const coverEnabledEl = document.getElementById("cover-enabled");
+  if (coverEnabledEl) coverEnabledEl.checked = !!currentSettings.coverPageEnabled;
+  const coverDitEl = document.getElementById("cover-dit-name");
+  if (coverDitEl) coverDitEl.value = currentSettings.coverDITName || "";
+  const coverFieldsEl = document.getElementById("cover-custom-fields");
+  if (coverFieldsEl) coverFieldsEl.value = currentSettings.coverCustomFieldsText || "";
   updateLogoPreview();
   setupEventListeners();
   updateDashboard();
@@ -36,6 +51,26 @@ async function loadAndApplyLanguage(lang) {
   i18nData = await window.resolveAPI.loadLanguage(lang);
   applyTranslations();
   document.getElementById("language-select").value = lang;
+  // Update refresh icon tooltip
+  const refreshBtn = document.getElementById("refresh-button");
+  if (refreshBtn) {
+    const label = i18nData.refreshNow || "Refresh Now";
+    refreshBtn.setAttribute("title", label);
+    refreshBtn.setAttribute("aria-label", label);
+  }
+  // Update floating buttons tooltips (donate/github)
+  const donateFab = document.getElementById("donate-fab");
+  if (donateFab) {
+    const label = i18nData.donate || "Donate";
+    donateFab.setAttribute("title", label);
+    donateFab.setAttribute("aria-label", label);
+  }
+  const githubFab = document.getElementById("github-fab");
+  if (githubFab) {
+    const label = i18nData.github || "GitHub";
+    githubFab.setAttribute("title", label);
+    githubFab.setAttribute("aria-label", label);
+  }
 }
 
 function applyTranslations() {
@@ -51,17 +86,17 @@ function applyTranslations() {
 function setupEventListeners() {
   const modal = document.getElementById("settings-modal");
   const settingsButton = document.getElementById("settings-button");
-  const closeButton = document.querySelector(".close-button");
+  // Scope the close button to the settings modal to avoid conflicts
+  const closeButton = modal ? modal.querySelector(".close-button") : null;
 
-  settingsButton.onclick = () => {
-    modal.style.display = "block";
-  };
-  closeButton.onclick = () => (modal.style.display = "none");
-  window.onclick = (event) => {
-    if (event.target == modal) {
-      modal.style.display = "none";
-    }
-  };
+  if (settingsButton && modal) {
+    settingsButton.onclick = () => {
+      modal.style.display = "block";
+    };
+  }
+  if (closeButton && modal) {
+    closeButton.onclick = () => (modal.style.display = "none");
+  }
 
   document
     .getElementById("auto-refresh")
@@ -69,15 +104,25 @@ function setupEventListeners() {
   document
     .getElementById("refresh-interval")
     .addEventListener("change", startOrStopAutoRefresh);
-  document
-    .getElementById("refresh-now")
-    .addEventListener("click", updateDashboard);
+  const refreshButton = document.getElementById("refresh-button");
+  if (refreshButton) {
+    refreshButton.addEventListener("click", async () => {
+      await updateDashboard();
+      await populateTimelineList(); // ensure timelines reflect current project
+    });
+  }
   document
     .getElementById("language-select")
     .addEventListener("change", handleLanguageChange);
   document
     .getElementById("thumbnail-source-select")
     .addEventListener("change", handleThumbnailSourceChange);
+  const coverEnabled = document.getElementById("cover-enabled");
+  if (coverEnabled) coverEnabled.addEventListener("change", handleCoverEnabledChange);
+  const coverDit = document.getElementById("cover-dit-name");
+  if (coverDit) coverDit.addEventListener("input", handleCoverDitChange);
+  const coverFields = document.getElementById("cover-custom-fields");
+  if (coverFields) coverFields.addEventListener("input", handleCoverFieldsChange);
   document
     .getElementById("change-logo-button")
     .addEventListener("click", handleChangeLogo);
@@ -96,6 +141,91 @@ function setupEventListeners() {
   document
     .getElementById("deselect-all-timelines")
     .addEventListener("click", () => setAllTimelinesSelected(false));
+
+  // Donate modal events
+  const donateFab = document.getElementById("donate-fab");
+  const donateModal = document.getElementById("donate-modal");
+  if (donateFab && donateModal) {
+    donateFab.addEventListener("click", () => (donateModal.style.display = "block"));
+    const closeBtn = donateModal.querySelector(".close-button");
+    if (closeBtn) closeBtn.addEventListener("click", () => (donateModal.style.display = "none"));
+    const paypalLink = document.getElementById("paypal-link");
+    if (paypalLink) {
+      paypalLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const href = paypalLink.getAttribute("href");
+        if (href) window.resolveAPI.openExternal(href);
+      });
+    }
+  }
+
+  // GitHub button
+  const githubFab = document.getElementById("github-fab");
+  if (githubFab) {
+    githubFab.addEventListener("click", () => {
+      window.resolveAPI.openExternal("https://github.com/AyuTao/AyuDIT");
+    });
+  }
+
+  // 缩略图导出相关事件
+  const exportThumbnailsButton = document.getElementById("export-thumbnails-button");
+  if (exportThumbnailsButton) {
+    exportThumbnailsButton.addEventListener("click", function() {
+      console.log("缩略图按钮被点击了");
+      // 若未选择任何时间线，先提示再返回
+      if (!hasSelectedTimelines()) {
+        alert(i18nData.selectTimelineAlert || "Please select at least one timeline.");
+        return;
+      }
+      showThumbnailExportModal();
+    });
+    console.log("缩略图导出按钮事件监听器已添加");
+  } else {
+    console.error("找不到缩略图导出按钮");
+  }
+  
+  // 缩略图导出模态框事件
+  const thumbnailModal = document.getElementById("thumbnail-export-modal");
+  if (thumbnailModal) {
+    const thumbnailCloseButton = thumbnailModal.querySelector(".close-button");
+    if (thumbnailCloseButton) {
+      thumbnailCloseButton.onclick = () => (thumbnailModal.style.display = "none");
+    }
+    
+    const exportAllButton = document.getElementById("export-all-thumbnails");
+    if (exportAllButton) {
+      exportAllButton.addEventListener("click", () => handleThumbnailExport("all"));
+    }
+    
+    const exportMarkedButton = document.getElementById("export-marked-thumbnails");
+    if (exportMarkedButton) {
+      exportMarkedButton.addEventListener("click", () => handleThumbnailExport("marked"));
+    }
+  }
+  
+  // 点击模态框外部关闭 - 处理所有模态框
+  window.addEventListener("click", (event) => {
+    const settingsModal = document.getElementById("settings-modal");
+    const thumbnailModal = document.getElementById("thumbnail-export-modal");
+    const donateModal = document.getElementById("donate-modal");
+    
+    if (event.target == settingsModal) {
+      settingsModal.style.display = "none";
+    }
+    if (event.target == thumbnailModal) {
+      thumbnailModal.style.display = "none";
+    }
+    if (event.target == donateModal) {
+      donateModal.style.display = "none";
+    }
+  });
+}
+
+function hasSelectedTimelines() {
+  const timelineListEl = document.getElementById("timeline-list");
+  if (!timelineListEl) return false;
+  const checkboxes = timelineListEl.querySelectorAll('input[type="checkbox"]');
+  return Array.from(checkboxes).some(cb => cb.checked);
 }
 
 async function handleLanguageChange(event) {
@@ -108,6 +238,21 @@ async function handleLanguageChange(event) {
 async function handleThumbnailSourceChange(event) {
   const newValue = event.target.value;
   currentSettings.thumbnailSource = newValue;
+  await window.resolveAPI.saveSettings(currentSettings);
+}
+
+async function handleCoverEnabledChange(event) {
+  currentSettings.coverPageEnabled = event.target.checked;
+  await window.resolveAPI.saveSettings(currentSettings);
+}
+
+async function handleCoverDitChange(event) {
+  currentSettings.coverDITName = event.target.value;
+  await window.resolveAPI.saveSettings(currentSettings);
+}
+
+async function handleCoverFieldsChange(event) {
+  currentSettings.coverCustomFieldsText = event.target.value;
   await window.resolveAPI.saveSettings(currentSettings);
 }
 
@@ -144,7 +289,10 @@ function startAutoRefresh() {
   stopAutoRefresh();
   const interval = document.getElementById("refresh-interval").value * 1000;
   if (interval > 0) {
-    refreshIntervalId = setInterval(updateDashboard, interval);
+    refreshIntervalId = setInterval(async () => {
+      await updateDashboard();
+      await populateTimelineList();
+    }, interval);
   }
 }
 
@@ -284,6 +432,11 @@ function handleGenerateReportFromSelection(type) {
       timelines: selectedTimelines,
       thumbnailSource: currentSettings.thumbnailSource,
       reportLogoPath: currentSettings.reportLogoPath,
+      cover: {
+        enabled: !!currentSettings.coverPageEnabled,
+        ditName: currentSettings.coverDITName || "",
+        customFieldsText: currentSettings.coverCustomFieldsText || "",
+      },
     };
     if (type === "pdf") {
       window.resolveAPI.startPdfReport(payload);
@@ -310,4 +463,59 @@ function formatBytes(bytes, decimals = 2) {
   const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+}
+
+// --- 缩略图导出相关函数 ---
+function showThumbnailExportModal() {
+  console.log("显示缩略图导出模态框");
+  const modal = document.getElementById("thumbnail-export-modal");
+  if (modal) {
+    modal.style.display = "block";
+    console.log("模态框已显示");
+  } else {
+    console.error("找不到缩略图导出模态框元素");
+  }
+}
+
+// 确保函数在全局作用域中可用
+window.showThumbnailExportModal = showThumbnailExportModal;
+
+// 测试函数
+function testThumbnailButton() {
+  console.log("测试缩略图按钮");
+  alert("缩略图按钮点击测试");
+}
+
+function handleThumbnailExport(exportMode) {
+  console.log("开始缩略图导出，模式:", exportMode);
+  const timelineListEl = document.getElementById("timeline-list");
+  const selectedTimelines = [];
+  const listItems = timelineListEl.querySelectorAll("li");
+
+  listItems.forEach((li) => {
+    const checkbox = li.querySelector('input[type="checkbox"]');
+    if (checkbox.checked) {
+      selectedTimelines.push(li.dataset.timelineName);
+    }
+  });
+
+  console.log("选中的时间线:", selectedTimelines);
+
+  if (selectedTimelines.length > 0) {
+    const payload = {
+      timelines: selectedTimelines,
+      thumbnailSource: currentSettings.thumbnailSource,
+      exportMode: exportMode
+    };
+    
+    console.log("发送导出请求:", payload);
+    window.resolveAPI.startThumbnailExport(payload);
+    
+    // 关闭模态框
+    document.getElementById("thumbnail-export-modal").style.display = "none";
+  } else {
+    alert(
+      i18nData.selectTimelineAlert || "Please select at least one timeline.",
+    );
+  }
 }

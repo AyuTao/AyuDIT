@@ -1,46 +1,62 @@
-# AyuDIT: The Professional, Subscription-Free DIT Software for DaVinci Resolve
+# AyuDIT：为达芬奇打造的、无需订阅的专业DIT软件
 
-`AyuDIT` is not just a plugin; it is a complete and powerful DIT (Digital Imaging Technician) software solution built directly within DaVinci Resolve Studio. It is designed to be a perfect, subscription-free alternative to expensive annual-fee software like Pomfort Silverstack Lab and Foolcat.
+`AyuDIT` 不仅仅是一个插件，它是直接构建在 DaVinci Resolve Studio 内部的一套完整而强大的DIT（数字影像工程师）软件解决方案。是 **Pomfort Silverstack Lab**、**Foolcat** 等昂贵年度订阅软件的完美替代品，并且**完全免费**。
 
-## Why AyuDIT?
+## 为什么选择 AyuDIT？
 
-The vision for `AyuDIT` was born from a major shift in the post-production landscape. With DaVinci Resolve 20's native support for Apple ProRes RAW, the platform has become a truly universal tool, capable of handling nearly every format and unifying the entire post-production workflow.
+`AyuDIT` 的愿景诞生于后期制作领域的一次重大变革。随着达芬奇20版本开始原生支持 **Apple ProRes RAW**，这个平台已经成为一个真正意义上的“万金油”工具，几乎能够处理所有格式，并统一整个后期制作流程。
 
-This presented a unique opportunity: to leverage the power of Resolve's backend to create a comprehensive DIT tool without the high costs. With `AyuDIT`, you no longer need to pay for expensive annual licenses. All you need is a license for DaVinci Resolve Studio.
+这为我们提供了一个独特的机会：利用达芬奇强大的后端，创造一个功能全面但无需高昂成本的DIT工具。有了`AyuDIT`，您不再需要支付昂贵的年费。您所需要的，仅仅是一个达芬奇Studio版的许可证。
 
-![AyuDIT Screenshot](https://i.imgur.com/your-screenshot-url.png)
-*(Replace this with a URL to your screenshot)*
+![AyuDIT 软件截图](https://i.imgur.com/your-screenshot-url.png)
+*(请将此链接替换为您自己的软件截图链接)*
 
-## Features
+## 核心功能
 
--   **Project Dashboard**: Get an at-a-glance overview of your project, including counts for video, audio, images, and timelines, as well as the total size of all unique media.
--   **Multi-Timeline Selection**: Select one or more timelines to include in your reports.
--   **Drag & Drop Reordering**: Easily reorder the selected timelines to control the order in the final report.
--   **Professional PDF Reports**: Generate clean, multi-page PDF reports with a fixed, professional layout, thumbnails, and key metadata.
--   **Comprehensive CSV Export**: Export **all** available metadata for every clip in your selected timelines to a single CSV file, perfect for spreadsheets and data analysis.
--   **Configurable Workflow**: Customize your reports by choosing the thumbnail source frame (First, Middle, or Last).
--   **Interactive UI**: A user-friendly interface with features like "Select All" and a real-time progress bar for report generation.
--   **Multi-Language Support**: Switch between English and Chinese.
+-   **仪表盘四张卡片**：视频、音频、时间线、总大小（媒体池去重后的媒体总占用）。
+-   **多时间线选择 + 拖拽排序**：按所选顺序生成报告。
+-   **PDF 报告（含缩略图）**：每条时间线一页，展示关键信息；支持可选封面页（居中排版），包含 Logo、当前日期、项目统计、DIT 人名、自定义字段。
+-   **CSV 导出**：导出所选时间线内每个片段的全部元数据。
+-   **单帧缩略图导出**：
+    -   导出全部时间线素材单帧
+    -   仅导出标记素材单帧（使用“时间线标尺上的彩色 Marker”）
+    -   文件命名：`时间线名称-时间码.jpg`
+    -   导出目录名跟随语言，如 `Stills_<项目>_<YYYYMMDD_HHMMSS>` 或 `单帧_...`
+-   **缩略图来源可配置**：首帧 / 中间帧（默认）/ 尾帧（用于 PDF 和“导出全部素材单帧”）。
+-   **置顶进度弹窗**：带实时百分比与快捷操作按钮。
+-   **多语言**：中/英界面、对话框标题及导出目录前缀跟随语言。
+-   **刷新与自动刷新**：头部刷新按钮 + 自动刷新（默认 60 秒），同时更新时间线列表与仪表盘数据。
 
-## Requirements
+## 系统要求
 
--   **DaVinci Resolve Studio version 20.2 or newer.**
--   The Studio version is **required**.
+-   **DaVinci Resolve Studio 20.2 或更高版本。**
+-   **必须**使用 Studio 版本。
 
-## Installation
+## 安装说明
 
-For detailed installation instructions, please see the [Installation Guide](INSTALL.md).
+详细的安装步骤，请参阅 [安装部署说明](INSTALL_zh.md)。
 
-1.  Download the latest `AyuDIT.zip` from the [releases page](https://github.com/AyuTao/AyuDIT/releases).
-2.  Unzip the file.
-3.  Copy the entire `AyuDIT` folder to the Resolve Workflow Integration Plugins directory.
-4.  Restart DaVinci Resolve.
-5.  Launch from `Workspace` > `Workflow Integrations` > `AyuDIT`.
+1.  从 [发行版页面](https://github.com/AyuTao/AyuDIT/releases) 下载最新的 `AyuDIT.zip`。
+2.  解压文件。
+3.  将整个 `AyuDIT` 文件夹拷贝到达芬奇的工作流程集成插件目录。
+4.  重启达芬奇。
+5.  从 `工作区` > `工作流程集成` > `AyuDIT` 启动插件。
 
-## Usage
+## 使用方法
 
-For a complete guide to all features, please see the [User Manual](USER_MANUAL.md).
+完整流程详见 [使用教程](USER_MANUAL_zh.md)。
 
-## License
+小贴士：
 
-This project is licensed under the **GNU General Public License v3.0**. This means that if you use, distribute, or modify this code, you must also make your derivative work open source under the same license. Please see the [LICENSE](LICENSE) file for full details.
+- 导出前需至少选择一条时间线。
+- “仅导出标记素材单帧”需先在“时间线标尺”添加彩色 Marker。
+- PDF 封面页（启用/禁用、DIT 人名、自定义字段、Logo）均在设置内配置。
+
+## 授权协议
+
+本项目采用 **GNU General Public License v3.0** 授权。这意味着如果您使用、分发或修改此代码，您也必须将您的衍生作品在相同的许可下开源。详情请参阅 [LICENSE](LICENSE) 文件。
+
+如果您觉得这个项目对您有帮助，可以扫描下方二维码请我喝杯咖啡。您的每一份支持都将激励我做得更好！
+
+<img src="./img/donate_alipay.png" alt="支付宝捐赠" width="200" style="display:inline-block; margin: 0 10px;">
+<img src="./img/donate_wechat.png" alt="微信支付捐赠" width="200" style="display:inline-block;">

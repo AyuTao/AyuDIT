@@ -15,7 +15,7 @@ const { PNG } = require("pngjs");
 const WorkflowIntegration = require("./WorkflowIntegration.node");
 
 const PLUGIN_ID = "com.AyuDITsh.resolve.AyuDIT";
-const DEFAULT_LOGO_PATH = path.join(__dirname, "img", "AyuDITtlogo.png");
+const DEFAULT_LOGO_PATH = path.join(__dirname, "img", "ayuditlogo.png");
 
 // --- Custom Application Menu ---
 const isMac = process.platform === "darwin";
@@ -23,21 +23,21 @@ const menuTemplate = [
   // { appMenu }
   ...(isMac
     ? [
-        {
-          label: "AyuDIT",
-          submenu: [
-            { role: "about" },
-            { type: "separator" },
-            { role: "services" },
-            { type: "separator" },
-            { role: "hide" },
-            { role: "hideothers" },
-            { role: "unhide" },
-            { type: "separator" },
-            { role: "quit" },
-          ],
-        },
-      ]
+      {
+        label: "AyuDIT",
+        submenu: [
+          { role: "about" },
+          { type: "separator" },
+          { role: "services" },
+          { type: "separator" },
+          { role: "hide" },
+          { role: "hideothers" },
+          { role: "unhide" },
+          { type: "separator" },
+          { role: "quit" },
+        ],
+      },
+    ]
     : []),
   // { fileMenu }
   {
@@ -73,11 +73,11 @@ const menuTemplate = [
       { role: "zoom" },
       ...(isMac
         ? [
-            { type: "separator" },
-            { role: "front" },
-            { type: "separator" },
-            { role: "window" },
-          ]
+          { type: "separator" },
+          { role: "front" },
+          { type: "separator" },
+          { role: "window" },
+        ]
         : [{ role: "close" }]),
     ],
   },
@@ -92,12 +92,22 @@ function getSettings() {
   try {
     if (fs.existsSync(settingsPath)) {
       const settingsData = fs.readFileSync(settingsPath);
-      return JSON.parse(settingsData);
+      const s = JSON.parse(settingsData);
+      // Backfill defaults for newly added settings
+      if (typeof s.thumbnailSource === "undefined") s.thumbnailSource = "middle";
+      if (typeof s.reportLogoPath === "undefined") s.reportLogoPath = DEFAULT_LOGO_PATH;
+      if (typeof s.coverPageEnabled === "undefined") s.coverPageEnabled = true;
+      if (typeof s.coverDITName === "undefined") s.coverDITName = "";
+      if (typeof s.coverCustomFieldsText === "undefined") s.coverCustomFieldsText = "";
+      return s;
     } else {
       const defaultSettings = {
         language: "en",
         thumbnailSource: "middle",
         reportLogoPath: DEFAULT_LOGO_PATH,
+        coverPageEnabled: true,
+        coverDITName: "",
+        coverCustomFieldsText: "",
       };
       fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings));
       return defaultSettings;
@@ -108,6 +118,9 @@ function getSettings() {
       language: "en",
       thumbnailSource: "middle",
       reportLogoPath: DEFAULT_LOGO_PATH,
+      coverPageEnabled: true,
+      coverDITName: "",
+      coverCustomFieldsText: "",
     }; // Fallback to default
   }
 }
@@ -145,6 +158,39 @@ let resolveObj = null;
 let projectManagerObj = null;
 let mainWindow = null;
 let progressWindow = null;
+
+// --- Helpers ---
+function safeFileComponent(str) {
+  try {
+    return String(str)
+      .replace(/[\\/:*?"<>|]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim();
+  } catch (_) {
+    return "unknown";
+  }
+}
+
+function isTruthy(val) {
+  if (typeof val === "boolean") return val;
+  if (val === null || val === undefined) return false;
+  const s = String(val).trim().toLowerCase();
+  return (
+    s === "true" ||
+    s === "yes" ||
+    s === "1" ||
+    s === "y" ||
+    s === "是" ||
+    s === "真"
+  );
+}
+
+function isGoodTake(metadata) {
+  if (!metadata) return false;
+  const v =
+    metadata["Good Take"] ?? metadata["GoodTake"] ?? metadata["Good take"];
+  return isTruthy(v);
+}
 
 // Function to log into renderer window console.
 function debugLog(message) {
@@ -212,6 +258,18 @@ function formatBytes(bytes, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
+// 格式化日期为 YYYYMMDD_HHMMSS 格式
+function formatDateForFilename() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  return `${year}${month}${day}_${hours}${minutes}${seconds}`;
+}
+
 // Gets media stats from the current project.
 async function getMediaStats() {
   const project = await getCurrentProject();
@@ -238,39 +296,64 @@ async function getMediaStats() {
   const timelineCount = await project.GetTimelineCount();
   stats.timeline = timelineCount || 0;
 
+  const audioExts = new Set([
+    ".wav",
+    ".aif",
+    ".aiff",
+    ".mp3",
+    ".m4a",
+    ".flac",
+    ".ogg",
+    ".aac",
+    ".wma",
+    ".caf",
+  ]);
+
+  function looksLikeAudio(props, filePath) {
+    try {
+      const type = (props["Type"] || "").toString().toLowerCase();
+      const videoCodec = (props["Video Codec"] || "").toString();
+      const audioCodec = (props["Audio Codec"] || "").toString();
+      const audioChannels = parseInt(props["Audio Channels"]) || 0;
+      const ext = filePath ? path.extname(filePath).toLowerCase() : "";
+      if (type.includes("timeline") || type.includes("时间线")) return false;
+      if ((type.includes("audio") || type.includes("音频")) && !(type.includes("video") || type.includes("视频"))) return true;
+      if (audioExts.has(ext)) return true;
+      if (audioCodec && (!videoCodec || videoCodec === "N/A")) return true;
+      if (audioChannels > 0 && (!videoCodec || videoCodec === "N/A")) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  function looksLikeVideo(props, filePath) {
+    try {
+      const type = (props["Type"] || "").toString().toLowerCase();
+      const videoCodec = (props["Video Codec"] || "").toString();
+      if (type.includes("video") || type.includes("视频")) return true;
+      if (videoCodec && videoCodec !== "N/A" && videoCodec !== "") return true;
+    } catch (_) {}
+    return false;
+  }
+
   async function scanFolder(folder) {
     const clips = await folder.GetClipList();
     if (clips) {
       for (const clip of clips) {
         try {
           const props = await clip.GetClipProperty();
-          const clipType = props["Type"];
+          const filePath = props["File Path"];
+          const type = props["Type"] || "";
           let categorized = false;
 
-          if (
-            clipType === "Video" ||
-            clipType === "Video + Audio" ||
-            (props["Video Codec"] &&
-              props["Video Codec"] !== "N/A" &&
-              props["Video Codec"] !== "")
-          ) {
+          if (looksLikeVideo(props, filePath)) {
             stats.video++;
             categorized = true;
-          } else if (
-            clipType === "Audio" ||
-            (props["Audio Channels"] &&
-              parseInt(props["Audio Channels"]) > 0 &&
-              (!props["Video Codec"] ||
-                props["Video Codec"] === "N/A" ||
-                props["Video Codec"] === ""))
-          ) {
+          } else if (looksLikeAudio(props, filePath)) {
             stats.audio++;
             categorized = true;
-          } else if (clipType === "Timeline") {
-            categorized = true;
+          } else if (String(type).toLowerCase().includes("timeline")) {
+            categorized = true; // ignore timelines in media counts
           }
-
-          const filePath = props["File Path"];
           if (filePath) {
             try {
               const fileStats = fs.statSync(filePath);
@@ -371,9 +454,25 @@ function framesToTimecode(frames, frameRate) {
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}:${f.toString().padStart(2, "0")}`;
 }
 
+function timecodeToFrames(tc, frameRate) {
+  try {
+    if (!tc || frameRate == 0) return 0;
+    const fps = Math.round(frameRate);
+    const parts = String(tc).split(":");
+    if (parts.length !== 4) return 0;
+    const h = parseInt(parts[0], 10) || 0;
+    const m = parseInt(parts[1], 10) || 0;
+    const s = parseInt(parts[2], 10) || 0;
+    const f = parseInt(parts[3], 10) || 0;
+    return (((h * 60 + m) * 60 + s) * fps) + f;
+  } catch (_) {
+    return 0;
+  }
+}
+
 async function generatePdfReport(
   filePath,
-  { timelines: timelineNames, thumbnailSource, reportLogoPath },
+  { timelines: timelineNames, thumbnailSource, reportLogoPath, cover },
   progressCb,
 ) {
   const resolve = await getResolve();
@@ -394,6 +493,13 @@ async function generatePdfReport(
   );
   const customFont = await pdfDoc.embedFont(fontBytes);
   const margin = 40;
+  // i18n for cover page labels
+  let coverI18n = {};
+  try {
+    const s = getSettings();
+    const lang = (s && s.language) || "en";
+    coverI18n = loadLanguage(lang) || {};
+  } catch (_) {}
 
   // --- Logo Handling ---
   let logoImage, logoDims;
@@ -430,6 +536,25 @@ async function generatePdfReport(
       timelineMap.set(await tl.GetName(), tl);
     }
 
+    // Preload timeline markers for selected timelines (for marked export mode)
+    const markersPerTimeline = new Map();
+    for (const timelineName of (timelineNames || [])) {
+      const tl = timelineMap.get(timelineName);
+      if (!tl) continue;
+      try {
+        const markers = await tl.GetMarkers();
+        const frames = Object.keys(markers || {})
+          .map((k) => parseInt(k, 10))
+          .filter((n) => Number.isFinite(n))
+          .sort((a, b) => a - b);
+        markersPerTimeline.set(timelineName, frames);
+      } catch (e) {
+        markersPerTimeline.set(timelineName, []);
+      }
+    }
+
+    // markersPerTimeline prepared above (if needed for future use)
+
     let totalClipsToProcess = 0;
     for (const timelineName of timelineNames) {
       const timeline = timelineMap.get(timelineName);
@@ -441,6 +566,76 @@ async function generatePdfReport(
       }
     }
     let clipsProcessed = 0;
+
+    // ----- Cover Page (optional) -----
+    if (cover && cover.enabled) {
+      const page = pdfDoc.addPage();
+      const { width, height } = page.getSize();
+      const margin = 50;
+      let y = height - margin;
+
+      const drawCentered = (text, size) => {
+        const t = String(text || "");
+        const tw = customFont.widthOfTextAtSize(t, size);
+        const x = Math.max(margin, (width - tw) / 2);
+        page.drawText(t, { x, y, size, font: customFont });
+        y -= size + 10;
+      };
+
+      // Logo centered on top
+      if (logoImage) {
+        const coverLogoDims = logoImage.scaleToFit(
+          Math.min(width * 0.4, 240),
+          Math.min(height * 0.2, 120),
+        );
+        page.drawImage(logoImage, {
+          x: (width - coverLogoDims.width) / 2,
+          y: height - margin - coverLogoDims.height,
+          width: coverLogoDims.width,
+          height: coverLogoDims.height,
+        });
+        y = height - margin - coverLogoDims.height - 50; // extra spacing to avoid overlap
+      }
+
+      // Title and subtitle centered
+      drawCentered(projectName, 28);
+      drawCentered(coverI18n.coverTitle || "DIT Report", 16);
+
+      // Date centered
+      const now = new Date();
+      const dateStr = now.toLocaleString();
+      drawCentered(`${coverI18n.dateLabel || "Date"}: ${dateStr}`, 12);
+
+      // Project stats centered
+      try {
+        const stats = await getMediaStats();
+        if (stats) {
+          const statsLabel = coverI18n.statsLabel || "Stats";
+          const footageLabel = coverI18n.footage || "Footage";
+          const audioLabel = coverI18n.audio || "Audio";
+          const timelinesLabel = coverI18n.timelines || "Timelines";
+          const totalSizeLabel = coverI18n.totalSizeLabel || "Total Size";
+          drawCentered(
+            `${statsLabel}: ${stats.video} ${footageLabel} | ${stats.audio} ${audioLabel} | ${stats.timeline} ${timelinesLabel} | ${totalSizeLabel}: ${formatBytes(stats.totalSize)}`,
+            11,
+          );
+        }
+      } catch (_) {}
+
+      // DIT name
+      if (cover.ditName) {
+        drawCentered(`${coverI18n.ditLabel || "DIT"}: ${cover.ditName}`, 12);
+      }
+
+      // Custom fields: one per line "key: value"
+      if (cover.customFields && Array.isArray(cover.customFields)) {
+        for (const { key, value } of cover.customFields) {
+          if (!key) continue;
+          drawCentered(`${key}: ${value || ""}`, 11);
+        }
+      }
+    }
+    // ----- End Cover Page -----
 
     for (const timelineName of timelineNames) {
       let page = pdfDoc.addPage();
@@ -838,6 +1033,13 @@ function registerResolveEventHandlers() {
   ipcMain.on("progress:show-item", (event, path) => {
     shell.showItemInFolder(path);
   });
+  ipcMain.on("shell:openExternal", (event, url) => {
+    try {
+      if (url && typeof url === "string") shell.openExternal(url);
+    } catch (e) {
+      debugLog(`Failed to open external URL: ${url}`);
+    }
+  });
 
   ipcMain.handle("dialog:open-image", async () => {
     const { filePaths } = await dialog.showOpenDialog(mainWindow, {
@@ -846,6 +1048,22 @@ function registerResolveEventHandlers() {
     });
     return filePaths && filePaths.length > 0 ? filePaths[0] : null;
   });
+
+  function normalizeCoverPayload(cover) {
+    const enabled = !!(cover && cover.enabled);
+    const ditName = (cover && cover.ditName) || "";
+    const text = (cover && cover.customFieldsText) || "";
+    const lines = String(text)
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    const customFields = lines.map((l) => {
+      const idx = l.indexOf(":");
+      if (idx === -1) return { key: l, value: "" };
+      return { key: l.slice(0, idx).trim(), value: l.slice(idx + 1).trim() };
+    });
+    return { enabled, ditName, customFields };
+  }
 
   const createProgressWindow = () => {
     progressWindow = new BrowserWindow({
@@ -856,27 +1074,39 @@ function registerResolveEventHandlers() {
       frame: false,
       resizable: false,
       show: false, // Hide initially to prevent flicker
+      alwaysOnTop: true, // Ensure on top like PDF flow
       webPreferences: {
         preload: path.join(__dirname, "preload_progress.js"),
       },
     });
     progressWindow.once("ready-to-show", () => {
-      progressWindow.show();
+      // Reinforce top-most behavior and focus when shown
+      try {
+        progressWindow.setAlwaysOnTop(true, "modal-panel");
+        progressWindow.show();
+        progressWindow.focus();
+      } catch (_) {
+        progressWindow.show();
+      }
     });
     progressWindow.loadFile("progress.html");
     progressWindow.on("closed", () => (progressWindow = null));
   };
 
   ipcMain.on("export-pdf-report", async (event, payload) => {
+    // 获取当前项目名称
+    const project = await getCurrentProject();
+    const projectName = project ? await project.GetName() : "Unknown_Project";
+
     const { filePath } = await dialog.showSaveDialog(mainWindow, {
       title: "Export PDF Report",
-      defaultPath: `DIT_Report_${Date.now()}.pdf`,
+      defaultPath: `report_${projectName}_${formatDateForFilename()}.pdf`,
       filters: [{ name: "PDF Files", extensions: ["pdf"] }],
     });
 
     if (filePath) {
       createProgressWindow();
-      let { timelines, thumbnailSource, reportLogoPath } = payload;
+      let { timelines, thumbnailSource, reportLogoPath, cover } = payload;
       if (!timelines || timelines.length === 0) {
         const project = await getCurrentProject();
         const timeline = await project.GetCurrentTimeline();
@@ -885,7 +1115,7 @@ function registerResolveEventHandlers() {
       if (timelines && timelines.length > 0) {
         generatePdfReport(
           filePath,
-          { timelines, thumbnailSource, reportLogoPath },
+          { timelines, thumbnailSource, reportLogoPath, cover: normalizeCoverPayload(cover) },
           (progress) => {
             if (progressWindow) {
               progressWindow.webContents.send("generation-progress", progress);
@@ -899,9 +1129,13 @@ function registerResolveEventHandlers() {
   });
 
   ipcMain.on("export-csv-report", async (event, payload) => {
+    // 获取当前项目名称
+    const project = await getCurrentProject();
+    const projectName = project ? await project.GetName() : "Unknown_Project";
+
     const { filePath } = await dialog.showSaveDialog(mainWindow, {
       title: "Export CSV Report",
-      defaultPath: `DIT_Report_${Date.now()}.csv`,
+      defaultPath: `report_${projectName}_${formatDateForFilename()}.csv`,
       filters: [{ name: "CSV Files", extensions: ["csv"] }],
     });
 
@@ -924,6 +1158,329 @@ function registerResolveEventHandlers() {
       }
     }
   });
+
+  // 批量导出缩略图
+  ipcMain.on("export-thumbnails", async (event, payload) => {
+    // 解析参数，保证 timelines 准备就绪
+    let { timelines, thumbnailSource, exportMode } = payload || {};
+    const project = await getCurrentProject();
+    const projectName = project ? await project.GetName() : "Unknown_Project";
+
+    if (!timelines || timelines.length === 0) {
+      if (project) {
+        const timeline = await project.GetCurrentTimeline();
+        if (timeline) timelines = [await timeline.GetName()];
+      }
+    }
+
+    // 语言与 i18n
+    let lang = "en";
+    let i18nForDialog = {};
+    try {
+      const settings = getSettings();
+      lang = (settings && settings.language) || "en";
+      i18nForDialog = loadLanguage(lang) || {};
+    } catch (_) {}
+
+    // 若是仅导出标记素材，且当前选择的时间线没有标记，则提示并返回
+    if (exportMode === "marked") {
+      const hasMarked = await hasAnyMarkedClips(timelines);
+      if (!hasMarked) {
+        await dialog.showMessageBox(mainWindow, {
+          type: "info",
+          buttons: [i18nForDialog.ok || "OK"],
+          title:
+            i18nForDialog.noMarkedClipsTitle ||
+            (lang === "zh" ? "没有标记素材" : "No Marked Clips"),
+          message:
+            i18nForDialog.noMarkedClipsMessage ||
+            (lang === "zh"
+              ? "当前选择的时间线没有标记素材。"
+              : "No marked clips found in the selected timelines."),
+        });
+        return;
+      }
+    }
+
+    // 让用户选择导出目录（标题随语言）
+    const dialogTitle =
+      i18nForDialog.chooseThumbnailSaveDir ||
+      (lang === "zh" ? "选择缩略图保存目录" : "Select Folder to Save Thumbnails");
+
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+      title: dialogTitle,
+      properties: ["openDirectory"],
+    });
+
+    if (filePaths && filePaths.length > 0) {
+      const baseDir = filePaths[0];
+      // 根据语言设置选择导出目录前缀
+      let folderPrefix = "Stills"; // default
+      try {
+        const settings = getSettings();
+        const langNow = (settings && settings.language) || "en";
+        const i18n = loadLanguage(langNow) || {};
+        folderPrefix =
+          i18n.thumbnailFolderPrefix || (langNow === "zh" ? "单帧" : "Stills");
+      } catch (_) {
+        // fallback to default
+      }
+      const exportDir = path.join(
+        baseDir,
+        `${folderPrefix}_${projectName}_${formatDateForFilename()}`,
+      );
+
+      // 创建导出目录
+      if (!fs.existsSync(exportDir)) {
+        fs.mkdirSync(exportDir, { recursive: true });
+      }
+
+      createProgressWindow();
+      if (timelines && timelines.length > 0) {
+        exportThumbnails(
+          exportDir,
+          { timelines, thumbnailSource, exportMode },
+          (progress) => {
+            if (progressWindow) {
+              progressWindow.webContents.send("generation-progress", progress);
+            }
+          },
+        );
+      } else {
+        if (progressWindow) progressWindow.close();
+      }
+    }
+  });
+}
+
+// 批量导出缩略图函数
+async function exportThumbnails(
+  exportDir,
+  { timelines: timelineNames, thumbnailSource, exportMode },
+  progressCb,
+) {
+  const resolve = await getResolve();
+  if (!resolve) return;
+
+  const supportedPages = ["edit", "color", "cut", "fairlight", "deliver"];
+  const currentPage = await resolve.GetCurrentPage();
+  const mustSwitchPage = !supportedPages.includes(currentPage);
+
+  try {
+    if (mustSwitchPage) {
+      await resolve.OpenPage("edit");
+    }
+
+    const project = await getCurrentProject();
+    if (!project) return;
+
+    const timelineCount = await project.GetTimelineCount();
+    const timelineMap = new Map();
+    for (let i = 1; i <= timelineCount; i++) {
+      const tl = await project.GetTimelineByIndex(i);
+      timelineMap.set(await tl.GetName(), tl);
+    }
+
+    // Preload timeline markers for selected timelines (for marked export mode)
+    const markersPerTimeline = new Map();
+    for (const timelineName of (timelineNames || [])) {
+      const tl = timelineMap.get(timelineName);
+      if (!tl) continue;
+      try {
+        const markers = await tl.GetMarkers();
+        const frames = Object.keys(markers || {})
+          .map((k) => parseInt(k, 10))
+          .filter((n) => Number.isFinite(n))
+          .sort((a, b) => a - b);
+        markersPerTimeline.set(timelineName, frames);
+      } catch (e) {
+        markersPerTimeline.set(timelineName, []);
+      }
+    }
+
+    let totalClipsToProcess = 0;
+    for (const timelineName of timelineNames) {
+      const timeline = timelineMap.get(timelineName);
+      if (!timeline) continue;
+
+      if (exportMode === "marked") {
+        // In marked mode, total work equals number of timeline markers
+        const markerFrames = markersPerTimeline.get(timelineName) || [];
+        totalClipsToProcess += markerFrames.length;
+        continue;
+      }
+
+      const videoTracks = await timeline.GetTrackCount("video");
+      for (let i = 1; i <= videoTracks; i++) {
+        const items = (await timeline.GetItemListInTrack("video", i)) || [];
+        totalClipsToProcess += items.length;
+      }
+    }
+
+    let clipsProcessed = 0;
+
+    for (const timelineName of timelineNames) {
+      const timeline = timelineMap.get(timelineName);
+      if (!timeline) continue;
+
+      await project.SetCurrentTimeline(timeline);
+      const originalTimecode = await timeline.GetCurrentTimecode();
+      const timelineFrameRate = parseFloat(
+        await timeline.GetSetting("timelineFrameRate"),
+      );
+
+      const videoTracks = await timeline.GetTrackCount("video");
+      let clips = [];
+      for (let i = 1; i <= videoTracks; i++) {
+        const items = await timeline.GetItemListInTrack("video", i);
+        if (items) clips.push(...items);
+      }
+
+      // If marked mode: export frames at timeline marker positions
+      if (exportMode === "marked") {
+        const markerFrames = markersPerTimeline.get(timelineName) || [];
+        for (const mf of markerFrames) {
+          // advance progress by one marker
+          clipsProcessed++;
+          progressCb({ progress: (clipsProcessed / Math.max(totalClipsToProcess, 1)) * 100 });
+
+          const timelineFrameRate = parseFloat(
+            await timeline.GetSetting("timelineFrameRate"),
+          );
+          // Convert marker frame (relative to timeline start) to absolute timecode
+          const startTc = await timeline.GetStartTimecode();
+          const startFrames = timecodeToFrames(startTc, timelineFrameRate);
+          // Marker frames are 1-based relative to timeline start; align to start timecode
+          const absFrames = startFrames + Math.max(0, (mf - 1));
+          const tc = framesToTimecode(absFrames, timelineFrameRate);
+          await timeline.SetCurrentTimecode(tc);
+          await new Promise((resolve) => setTimeout(resolve, 200));
+
+          // Try to find the clip under this marker (for naming)
+          let clipBase = "no-clip";
+          // First, ask Resolve for the current timeline video item
+          try {
+            const currentItem = await timeline.GetCurrentVideoItem();
+            if (currentItem) {
+              const mpi = await currentItem.GetMediaPoolItem();
+              const props = mpi ? await mpi.GetClipProperty() : null;
+              const fn = props && props["File Name"];
+              if (fn) clipBase = path.parse(fn).name;
+            }
+          } catch (_) {
+            // fall back to manual scan below
+          }
+          try {
+            if (clipBase === "no-clip") {
+              for (const c of clips) {
+                const s = await c.GetStart();
+                const e = await c.GetEnd();
+                // treat end as exclusive to avoid boundary ambiguity
+                if (absFrames >= s && absFrames < e) {
+                  const mpi = await c.GetMediaPoolItem();
+                  const props = mpi ? await mpi.GetClipProperty() : null;
+                  const fileName = props && props["File Name"];
+                  if (fileName) clipBase = path.parse(fileName).name;
+                  break;
+                }
+              }
+            }
+          } catch (_) {
+            // naming fallback already set
+          }
+
+          const safeTc = String(tc).replace(/[\\/:*?"<>|;]/g, "-");
+          const timelinePart = safeFileComponent(timelineName);
+          const thumbnailPath = path.join(
+            exportDir,
+            `${timelinePart}-${safeTc}.jpg`,
+          );
+          const success = await project.ExportCurrentFrameAsStill(thumbnailPath);
+          if (!success) {
+            debugLog(`Failed to export thumbnail at marker ${tc} for timeline ${timelineName}`);
+          }
+        }
+
+        await timeline.SetCurrentTimecode(originalTimecode);
+        continue; // move to next timeline
+      }
+
+      // Else: export per clip (all mode)
+      for (const clip of clips) {
+        let mediaPoolItem;
+        try {
+          mediaPoolItem = await clip.GetMediaPoolItem();
+        } catch (e) {
+          continue;
+        }
+        if (!mediaPoolItem) continue;
+
+        // All mode does not filter by markers
+
+        clipsProcessed++;
+        progressCb({ progress: (clipsProcessed / totalClipsToProcess) * 100 });
+
+        const startFrame = await clip.GetStart();
+        const endFrame = await clip.GetEnd();
+        const duration = await clip.GetDuration();
+
+        let frameToExport;
+        switch (thumbnailSource) {
+          case "first":
+            frameToExport = startFrame;
+            break;
+          case "last":
+            frameToExport = endFrame;
+            break;
+          case "middle":
+          default:
+            frameToExport = startFrame + Math.floor(duration / 2);
+            break;
+        }
+
+        const tcForName = framesToTimecode(frameToExport, timelineFrameRate);
+        await timeline.SetCurrentTimecode(tcForName);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
+        // 获取文件名
+        const props = await mediaPoolItem.GetClipProperty();
+        const fileName = props["File Name"] || `clip_${clipsProcessed}`;
+        const baseName = path.parse(fileName).name; // 去掉扩展名
+        const timelinePart = safeFileComponent(timelineName);
+        const safeTc = String(tcForName).replace(/[\\/:*?"<>|;]/g, "-");
+        const thumbnailPath = path.join(
+          exportDir,
+          `${timelinePart}-${safeTc}.jpg`,
+        );
+
+        const success = await project.ExportCurrentFrameAsStill(thumbnailPath);
+
+        if (!success) {
+          debugLog(`Failed to export thumbnail for: ${fileName}`);
+        }
+      }
+
+      await timeline.SetCurrentTimecode(originalTimecode);
+    }
+
+    if (progressWindow) {
+      progressWindow.webContents.send("generation-complete", {
+        filePath: exportDir,
+        message: `缩略图已导出到: ${exportDir}`
+      });
+    }
+  } catch (error) {
+    debugLog(`Error exporting thumbnails: ${error.toString()}`);
+    if (progressWindow) {
+      progressWindow.webContents.send("generation-complete", {
+        error: error.toString(),
+      });
+    }
+  } finally {
+    if (mustSwitchPage) {
+      await resolve.OpenPage(currentPage);
+    }
+  }
 }
 
 function createWindow() {
@@ -958,3 +1515,43 @@ app.on("window-all-closed", function () {
 app.on("activate", function () {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
+// 检查所选时间线中是否存在时间线标记
+async function hasAnyMarkedClips(timelineNames) {
+  if (!timelineNames || timelineNames.length === 0) return false;
+  const resolve = await getResolve();
+  if (!resolve) return false;
+
+  const supportedPages = ["edit", "color", "cut", "fairlight", "deliver"];
+  const currentPage = await resolve.GetCurrentPage();
+  const mustSwitchPage = !supportedPages.includes(currentPage);
+
+  try {
+    if (mustSwitchPage) {
+      await resolve.OpenPage("edit");
+    }
+    const project = await getCurrentProject();
+    if (!project) return false;
+
+    const timelineCount = await project.GetTimelineCount();
+    const timelineMap = new Map();
+    for (let i = 1; i <= timelineCount; i++) {
+      const tl = await project.GetTimelineByIndex(i);
+      timelineMap.set(await tl.GetName(), tl);
+    }
+
+    for (const name of timelineNames) {
+      const timeline = timelineMap.get(name);
+      if (!timeline) continue;
+      try {
+        const markers = await timeline.GetMarkers();
+        if (markers && Object.keys(markers).length > 0) return true;
+      } catch (_) {}
+    }
+    return false;
+  } finally {
+    if (mustSwitchPage) {
+      await resolve.OpenPage(currentPage);
+    }
+  }
+}
