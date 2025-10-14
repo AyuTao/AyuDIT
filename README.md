@@ -1,4 +1,4 @@
-# AyuDIT：为达芬奇打造的、无需订阅的专业DIT插件
+# AyuDIT：为达芬奇打造的、无需订阅的专业DIT报告生成插件
 
 `AyuDIT` 不仅仅是一个插件，它是直接构建在 DaVinci Resolve Studio 内部的一套完整而强大的DIT（数字影像工程师）软件解决方案。是 **Pomfort Silverstack Lab**、**Foolcat** 等昂贵年度订阅软件的完美替代品，并且**完全免费****开源**。
 
@@ -7,12 +7,14 @@
 
 这为我们提供了一个独特的机会：利用达芬奇强大的后端，创造一个功能全面但无需高昂成本的DIT工具。有了`AyuDIT`，您不再需要支付昂贵的年费。您所需要的，仅仅是一个达芬奇Studio版的许可证。
 
-![AyuDIT 软件截图](https://github.com/AyuTao/AyuDIT/blob/main/img/img/ayuditui.jpg)
+![AyuDIT 软件截图](https://github.com/AyuTao/AyuDIT/blob/main/img/ayuditui.jpg)
 
+## 捐赠
 如果您觉得这个项目对您有帮助，可以扫描下方二维码请我喝杯咖啡。您的每一份支持都将激励我做得更好！
 
-<img src="./img/donate_alipay.png" alt="支付宝捐赠" width="200" style="display:inline-block; margin: 0 10px;">
-<img src="./img/donate_wechat.png" alt="微信支付捐赠" width="200" style="display:inline-block;">
+                        <img src="./img/wechatalipay.webp" >
+
+
 
 ## 核心功能
 
