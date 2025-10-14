@@ -12,7 +12,8 @@
 ## 捐赠
 如果您觉得这个项目对您有帮助，可以扫描下方二维码请我喝杯咖啡。
 ![收款码](./img/wechatalipay.webp)
-[通过 PayPal 捐赠](https://www.paypal.me/ayutao)
+
+[![通过 PayPal 捐赠](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/ayutao)
 
 
 ## 核心功能
