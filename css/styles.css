@@ -199,7 +199,7 @@ body {
     gap: 12px;
 }
 .form-row > label {
-    min-width: 120px;
+    min-width: 110px;
     color: #cfcfcf;
 }
 
@@ -337,6 +337,25 @@ input:focus, select:focus, textarea:focus {
 
 /* 深色主题下的勾选/单选色 */
 input[type="checkbox"], input[type="radio"] { accent-color: #0e639c; }
+
+/* subtle hint text */
+.hint {
+    color: #9aa0a6;
+    font-size: 12px;
+}
+
+/* Render modal layout tweaks */
+#render-modal .form-row select {
+    flex: 1;
+}
+#render-modal .form-row .text-input {
+    flex: 1;
+}
+#reload-presets-button, #choose-render-dir-button {
+    min-width: 32px;
+    height: 32px;
+}
+#preset-count { margin-left: auto; }
 
 #cover-custom-fields {
     resize: vertical;

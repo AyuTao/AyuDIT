@@ -226,6 +226,11 @@ function debugLog(message) {
   if (mainWindow) {
     mainWindow.webContents.send("log:message", message.toString());
   }
+  try {
+    if (progressWindow) {
+      progressWindow.webContents.send("log:message", message.toString());
+    }
+  } catch (_) {}
 }
 
 // Initialize Resolve interface and returns Resolve object.
@@ -1105,6 +1110,22 @@ function registerResolveEventHandlers() {
   ipcMain.handle("settings:get", (event) => getSettings());
   ipcMain.handle("settings:save", (event, settings) => saveSettings(settings));
   ipcMain.handle("language:load", (event, lang) => loadLanguage(lang));
+  ipcMain.handle("render:get-presets", async () => {
+    try {
+      const project = await getCurrentProject();
+      if (!project) return [];
+      // Try both API names for compatibility
+      let list = [];
+      try { list = await project.GetRenderPresets(); } catch (_) {}
+      if (!list || (Array.isArray(list) && list.length === 0)) {
+        try { list = await project.GetRenderPresetList(); } catch (_) {}
+      }
+      if (!list) return [];
+      if (Array.isArray(list)) return list;
+      if (typeof list === 'object') return Object.values(list);
+      return [];
+    } catch (e) { return []; }
+  });
   ipcMain.on("app:quit", () => app.quit());
 
   // Handlers from Progress Window
@@ -1131,6 +1152,17 @@ function registerResolveEventHandlers() {
       filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg"] }],
     });
     return filePaths && filePaths.length > 0 ? filePaths[0] : null;
+  });
+
+  ipcMain.handle("dialog:open-directory", async () => {
+    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+      properties: ["openDirectory", "createDirectory"],
+    });
+    return filePaths && filePaths.length > 0 ? filePaths[0] : null;
+  });
+
+  ipcMain.handle("path:get-movies", async () => {
+    try { return app.getPath('movies'); } catch (_) { return app.getPath('home'); }
   });
 
   function normalizeCoverPayload(cover) {
@@ -1296,38 +1328,42 @@ function registerResolveEventHandlers() {
       i18nForDialog = loadLanguage(lang) || {};
     } catch (_) {}
 
-    // 若是仅导出标记素材，且当前选择的时间线没有标记，则提示并返回
-    if (exportMode === "marked") {
-      const hasMarked = await hasAnyMarkedClips(timelines);
-      if (!hasMarked) {
-        await dialog.showMessageBox(mainWindow, {
-          type: "info",
-          buttons: [i18nForDialog.ok || "OK"],
-          title:
-            i18nForDialog.noMarkedClipsTitle ||
-            (lang === "zh" ? "没有标记素材" : "No Marked Clips"),
-          message:
-            i18nForDialog.noMarkedClipsMessage ||
-            (lang === "zh"
-              ? "当前选择的时间线没有标记素材。"
-              : "No marked clips found in the selected timelines."),
-        });
-        return;
-      }
+    // 让用户选择导出目录（标题随语言）
+    let baseDir = payload && payload.exportDir;
+    if (!baseDir) {
+      const dialogTitle =
+        i18nForDialog.chooseThumbnailSaveDir ||
+        (lang === "zh" ? "选择缩略图保存目录" : "Select Folder to Save Thumbnails");
+
+      const { filePaths } = await dialog.showOpenDialog(mainWindow, {
+        title: dialogTitle,
+        properties: ["openDirectory", "createDirectory"],
+        defaultPath: app.getPath('movies'),
+      });
+      if (filePaths && filePaths.length > 0) baseDir = filePaths[0];
     }
 
-    // 让用户选择导出目录（标题随语言）
-    const dialogTitle =
-      i18nForDialog.chooseThumbnailSaveDir ||
-      (lang === "zh" ? "选择缩略图保存目录" : "Select Folder to Save Thumbnails");
+    if (baseDir) {
+      // 若是仅导出标记素材，且当前选择的时间线没有标记，则提示并返回
+      if (exportMode === "marked") {
+        const hasMarked = await hasAnyMarkedClips(timelines);
+        if (!hasMarked) {
+          await dialog.showMessageBox(mainWindow, {
+            type: "info",
+            buttons: [i18nForDialog.ok || "OK"],
+            title:
+              i18nForDialog.noMarkedClipsTitle ||
+              (lang === "zh" ? "没有标记素材" : "No Marked Clips"),
+            message:
+              i18nForDialog.noMarkedClipsMessage ||
+              (lang === "zh"
+                ? "当前选择的时间线没有标记素材。"
+                : "No marked clips found in the selected timelines."),
+          });
+          return;
+        }
+      }
 
-    const { filePaths } = await dialog.showOpenDialog(mainWindow, {
-      title: dialogTitle,
-      properties: ["openDirectory"],
-    });
-
-    if (filePaths && filePaths.length > 0) {
-      const baseDir = filePaths[0];
       // 根据语言设置选择导出目录前缀
       let folderPrefix = "Stills"; // default
       try {
@@ -1725,3 +1761,88 @@ async function exportStillWithRetry(project, outPath, retries = 3, waits = [200,
   }
   return false;
 }
+  // 批量渲染视频导出
+  ipcMain.on("render:start", async (event, payload) => {
+    try {
+      const { timelines = [], presetName, presetNames, targetDir, nameTemplate } = payload || {};
+      const selectedPresets = (Array.isArray(presetNames) && presetNames.length>0) ? presetNames : (presetName ? [presetName] : []);
+      debugLog(`[Render] start requested. timelines=${(timelines||[]).join(', ')} preset=${selectedPresets.join(' | ')} out=${targetDir||''}`);
+      const resolve = await getResolve();
+      const project = await getCurrentProject();
+      if (!resolve || !project) return;
+      if (!targetDir) { debugLog('Render: no target dir'); return; }
+
+      // 切换到 Deliver 页面，让用户在达芬奇界面查看渲染进度
+      const originalPage = await resolve.GetCurrentPage();
+      await resolve.OpenPage("deliver");
+      await sleep(300);
+
+      // 清空现有任务队列
+      try { await project.DeleteAllRenderJobs(); debugLog('[Render] cleared previous queue'); } catch (e) { debugLog('[Render] clear queue failed'); }
+
+      // 加载预设（有些版本需要在 Deliver 页面后调用）
+      // 如果传入多预设，则逐任务切换预设
+
+      // 为每条时间线添加渲染任务
+      const jobIds = [];
+      for (const timelineName of timelines) {
+        const tl = await project.GetTimelineByName ? await project.GetTimelineByName(timelineName) : null;
+        const timeline = tl || (await (async()=>{
+          const count = await project.GetTimelineCount();
+          for (let i=1;i<=count;i++){ const t = await project.GetTimelineByIndex(i); if ((await t.GetName())===timelineName) return t; }
+          return null;
+        })());
+        if (!timeline) continue;
+        const setOk = await project.SetCurrentTimeline(timeline);
+        debugLog(`[Render] SetCurrentTimeline(${timelineName}) -> ${setOk}`);
+
+        const presetsToUse = selectedPresets.length>0 ? selectedPresets : [null];
+        for (const pName of presetsToUse) {
+          if (pName) {
+            try { const ok = await project.LoadRenderPreset(pName); debugLog(`[Render] LoadRenderPreset(${pName}) -> ${ok}`);} catch(e){ debugLog(`Render: LoadRenderPreset failed: ${e}`);} 
+          }
+          // 生成文件名
+          const dateStr = formatDateForFilename();
+          const safeTimeline = safeFileComponent ? safeFileComponent(timelineName) : timelineName.replace(/[^\w\-]+/g,'_');
+          const safePreset = pName ? (safeFileComponent ? safeFileComponent(pName) : String(pName).replace(/[^\w\-]+/g,'_')) : '';
+          const tpl = nameTemplate && nameTemplate.trim().length>0 ? nameTemplate : '{timeline}_{date}';
+          let customName = tpl.replace('{timeline}', safeTimeline).replace('{date}', dateStr).replace('{preset}', safePreset);
+          // 若模板中未包含 {preset} 且选择多预设，则追加预设名防止重名
+          if (!tpl.includes('{preset}') && selectedPresets.length>1 && safePreset) {
+            customName = `${customName}_${safePreset}`;
+          }
+          // 设置输出目录与文件名
+          const setR = await project.SetRenderSettings({ TargetDir: targetDir, CustomName: customName });
+          debugLog(`[Render] SetRenderSettings(TargetDir=${targetDir}, Name=${customName}) -> ${setR}`);
+          const jobId = await project.AddRenderJob();
+          if (jobId) jobIds.push(jobId);
+          debugLog(`[Render] AddRenderJob -> ${jobId}`);
+        }
+      }
+
+      // 开始渲染
+      if (jobIds.length > 0) {
+        let started = false;
+        try { started = await project.StartRendering(jobIds, true); } catch (_) {}
+        if (!started) {
+          try { started = await project.StartRendering(jobIds); } catch (_) {}
+        }
+        if (!started) {
+          try { started = await project.StartRendering(true); } catch (_) {}
+        }
+        debugLog(`[Render] StartRendering -> ${started}, jobs=${jobIds.length}`);
+        if (!started) {
+          debugLog('[Render] StartRendering returned false. Please check preset/settings.');
+        }
+        // 不再显示进度弹窗，交由达芬奇 Deliver 页面显示进度
+      } else {
+        debugLog('[Render] No render jobs added. Check preset/settings.');
+      }
+
+      // 若进度窗存在则关闭
+      try { if (progressWindow) progressWindow.close(); } catch (_) {}
+    } catch (error) {
+      debugLog(`Render error: ${error}`);
+      try { if (progressWindow) progressWindow.close(); } catch (_) {}
+    }
+  });

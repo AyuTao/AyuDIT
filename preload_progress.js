@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("progressAPI", {
     ipcRenderer.on("generation-progress", (_event, data) => callback(data)),
   onComplete: (callback) =>
     ipcRenderer.on("generation-complete", (_event, data) => callback(data)),
+  onLogMessage: (callback) =>
+    ipcRenderer.on("log:message", (_event, message) => callback(message)),
 
   // Renderer -> Main
   getSettings: () => ipcRenderer.invoke("settings:get"),

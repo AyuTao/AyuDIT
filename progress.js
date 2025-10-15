@@ -53,6 +53,9 @@ window.progressAPI.onComplete((data) => {
 
   progressContainer.style.display = "none";
   completionContainer.style.display = "flex";
+  // auto-scroll logs to bottom
+  const logBox = document.getElementById('log-box');
+  if (logBox) logBox.scrollTop = logBox.scrollHeight;
 });
 
 document.getElementById("ok-btn").addEventListener("click", () => {
@@ -72,6 +75,21 @@ document.getElementById("open-folder-btn").addEventListener("click", () => {
   }
   window.progressAPI.close();
 });
+
+// Live log into progress window
+const logBox = document.getElementById('log-box');
+if (window.progressAPI.onLogMessage && logBox) {
+  window.progressAPI.onLogMessage((msg) => {
+    const line = document.createElement('div');
+    line.textContent = String(msg);
+    logBox.appendChild(line);
+    // cap lines
+    if (logBox.childNodes.length > 500) {
+      logBox.removeChild(logBox.firstChild);
+    }
+    logBox.scrollTop = logBox.scrollHeight;
+  });
+}
   // render failures if any
   const failBox = document.getElementById("failures");
   if (failBox) {

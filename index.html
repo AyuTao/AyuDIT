@@ -62,6 +62,11 @@
                     <h3 data-i18n-key="timelineSelectionTitle"></h3>
                     <div class="button-group">
                         <button
+                            id="render-video-button"
+                            class="custom-button"
+                            data-i18n-key="renderVideo"
+                        ></button>
+                        <button
                             id="export-thumbnails-button"
                             class="custom-button"
                             data-i18n-key="exportThumbnails"
@@ -93,9 +98,9 @@
                 </div>
                 <ul id="timeline-list" class="timeline-list"></ul>
             </div>
-    </div>
+        </div>
 
-    <!-- Donate/GitHub Floating Buttons -->
+        <!-- Donate/GitHub Floating Buttons -->
     <div class="fab-group">
         <button id="donate-fab" class="donate-fab" aria-label="Donate" title="Donate" data-i18n-key="donate"></button>
         <button id="github-fab" class="github-fab" aria-label="GitHub" title="GitHub">
@@ -240,6 +245,36 @@
                     </div>
             </div>
         </div>
+        </div>
+
+        <!-- Render Video Modal -->
+        <div id="render-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <h3 data-i18n-key="renderVideo"></h3>
+                <div class="modal-body">
+                    <div class="form-group form-row">
+                        <label for="render-preset-select" data-i18n-key="renderPreset"></label>
+                        <select id="render-preset-select" multiple size="6"></select>
+                        <button id="reload-presets-button" class="icon-button" title="Reload">⟳</button>
+                    </div>
+                    <small id="preset-count" class="hint"></small>
+                    <small class="hint" data-i18n-key="multiSelectHint"></small>
+                    <div class="form-group form-row">
+                        <label data-i18n-key="outputDir"></label>
+                        <input type="text" id="render-output-dir" class="text-input" placeholder="/path/to/output" />
+                        <button id="choose-render-dir-button" class="icon-button" title="Browse">…</button>
+                    </div>
+                    <div class="form-group form-row">
+                        <label data-i18n-key="namingTemplate"></label>
+                        <input type="text" id="render-name-template" class="text-input" placeholder="{timeline}_{date}" />
+                    </div>
+                    <small class="hint" data-i18n-key="namingVarsHint"></small>
+                    <div class="modal-buttons">
+                        <button id="start-render-button" class="custom-button" data-i18n-key="startRender"></button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Thumbnail Export Modal -->

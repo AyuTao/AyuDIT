@@ -157,12 +157,22 @@ function setupEventListeners() {
   document
     .getElementById("export-csv-button")
     .addEventListener("click", () => handleGenerateReportFromSelection("csv"));
+  const renderVideoButton = document.getElementById("render-video-button");
+  if (renderVideoButton) {
+    renderVideoButton.addEventListener("click", () => {
+      if (!hasSelectedTimelines()) {
+        alert(i18nData.selectTimelineAlert || "Please select at least one timeline.");
+        return;
+      }
+      openRenderModal();
+    });
+  }
   document
     .getElementById("select-all-timelines")
-    .addEventListener("click", () => setAllTimelinesSelected(true));
+    .addEventListener("click", () => { setAllTimelinesSelected(true); updateExportButtonsState(); });
   document
     .getElementById("deselect-all-timelines")
-    .addEventListener("click", () => setAllTimelinesSelected(false));
+    .addEventListener("click", () => { setAllTimelinesSelected(false); updateExportButtonsState(); });
 
   // Donate modal events
   const donateFab = document.getElementById("donate-fab");
@@ -232,12 +242,34 @@ function setupEventListeners() {
       exportMarkedButton.addEventListener("click", () => handleThumbnailExport("marked"));
     }
   }
+
+  // 渲染导出模态框
+  const renderModal = document.getElementById("render-modal");
+  if (renderModal) {
+    const renderClose = renderModal.querySelector('.close-button');
+    if (renderClose) renderClose.onclick = () => (renderModal.style.display = 'none');
+    const startRenderBtn = document.getElementById('start-render-button');
+    if (startRenderBtn) startRenderBtn.addEventListener('click', handleStartRender);
+    const reloadBtn = document.getElementById('reload-presets-button');
+    if (reloadBtn) reloadBtn.addEventListener('click', async ()=>{ try{ await loadRenderPresetsIntoSelect(); }catch(e){ console.error(e);} });
+    const chooseDirBtn = document.getElementById('choose-render-dir-button');
+    if (chooseDirBtn) chooseDirBtn.addEventListener('click', async ()=>{
+      const p = await window.resolveAPI.openDirectoryDialog();
+      if (p) {
+        const el = document.getElementById('render-output-dir');
+        if (el) el.value = p;
+      }
+    });
+    const presetSel = document.getElementById('render-preset-select');
+    if (presetSel) presetSel.addEventListener('change', updatePresetCount);
+  }
   
   // 点击模态框外部关闭 - 处理所有模态框
   window.addEventListener("click", (event) => {
     const settingsModal = document.getElementById("settings-modal");
     const thumbnailModal = document.getElementById("thumbnail-export-modal");
     const donateModal = document.getElementById("donate-modal");
+    const renderModal = document.getElementById("render-modal");
     
     if (event.target == settingsModal) {
       settingsModal.style.display = "none";
@@ -247,6 +279,9 @@ function setupEventListeners() {
     }
     if (event.target == donateModal) {
       donateModal.style.display = "none";
+    }
+    if (event.target == renderModal) {
+      renderModal.style.display = "none";
     }
   });
 }
@@ -313,6 +348,9 @@ async function handleChangeLogo() {
     await window.resolveAPI.saveSettings(currentSettings);
     updateLogoPreview();
   }
+
+  // 初始化导出按钮状态
+  updateExportButtonsState();
 }
 
 async function handleResetLogo() {
@@ -395,6 +433,7 @@ async function populateTimelineList() {
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = false; // Default to unselected
+      checkbox.addEventListener('change', updateExportButtonsState);
 
       const label = document.createElement("span");
       label.textContent = timeline.name;
@@ -411,6 +450,7 @@ async function populateTimelineList() {
     });
 
     addDragAndDropListeners(timelineListEl);
+    updateExportButtonsState();
   } catch (error) {
     console.error("Failed to populate timeline list:", error);
     timelineListEl.innerHTML = `<li>${i18nData.errorLoading || "Error loading timelines."}</li>`;
@@ -506,6 +546,28 @@ function setAllTimelinesSelected(isSelected) {
   checkboxes.forEach((checkbox) => (checkbox.checked = isSelected));
 }
 
+function updateExportButtonsState() {
+  const enabled = hasSelectedTimelines();
+  const needTip = i18nData.selectTimelineAlert || 'Please select at least one timeline.';
+  const labels = {
+    render: i18nData.renderVideo || 'Render Video',
+    thumbs: i18nData.exportThumbnails || 'Export Thumbnails',
+    pdf: i18nData.generatePdf || 'Generate PDF',
+    csv: i18nData.exportCsv || 'Export CSV',
+  };
+  const setBtn = (id, label) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = !enabled;
+    el.setAttribute('title', enabled ? label : needTip);
+    el.setAttribute('aria-label', enabled ? label : needTip);
+  };
+  setBtn('render-video-button', labels.render);
+  setBtn('export-thumbnails-button', labels.thumbs);
+  setBtn('generate-pdf-button', labels.pdf);
+  setBtn('export-csv-button', labels.csv);
+}
+
 function formatBytes(bytes, decimals = 2) {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
@@ -552,20 +614,90 @@ function handleThumbnailExport(exportMode) {
   console.log("选中的时间线:", selectedTimelines);
 
   if (selectedTimelines.length > 0) {
-    const payload = {
-      timelines: selectedTimelines,
-      thumbnailSource: currentSettings.thumbnailSource,
-      exportMode: exportMode
-    };
-    
-    console.log("发送导出请求:", payload);
-    window.resolveAPI.startThumbnailExport(payload);
-    
-    // 关闭模态框
-    document.getElementById("thumbnail-export-modal").style.display = "none";
+    // 先选择输出目录（支持新建文件夹）
+    window.resolveAPI.openDirectoryDialog().then((dir)=>{
+      if (!dir) return; // 用户取消
+      const payload = {
+        timelines: selectedTimelines,
+        thumbnailSource: currentSettings.thumbnailSource,
+        exportMode: exportMode,
+        exportDir: dir,
+      };
+      console.log("发送导出请求:", payload);
+      window.resolveAPI.startThumbnailExport(payload);
+      // 关闭模态框
+      document.getElementById("thumbnail-export-modal").style.display = "none";
+    });
   } else {
     alert(
       i18nData.selectTimelineAlert || "Please select at least one timeline.",
     );
   }
+}
+async function openRenderModal() {
+  // 预加载预设
+  try {
+    await loadRenderPresetsIntoSelect();
+  } catch (e) { console.error('Failed to load render presets', e); }
+  try {
+    const outDirEl = document.getElementById('render-output-dir');
+    if (outDirEl && !outDirEl.value) {
+      const movies = await window.resolveAPI.getMoviesDir();
+      if (movies) outDirEl.value = movies;
+    }
+  } catch (_) {}
+  const modal = document.getElementById('render-modal');
+  if (modal) modal.style.display = 'block';
+}
+
+async function handleStartRender() {
+  const timelineListEl = document.getElementById("timeline-list");
+  const selectedTimelines = [];
+  timelineListEl.querySelectorAll('li').forEach((li)=>{
+    const cb = li.querySelector('input[type="checkbox"]');
+    if (cb && cb.checked) selectedTimelines.push(li.dataset.timelineName);
+  });
+  if (selectedTimelines.length === 0) {
+    alert(i18nData.selectTimelineAlert || 'Please select at least one timeline.');
+    return;
+  }
+  const presetSel = document.getElementById('render-preset-select');
+  const presetNames = presetSel ? Array.from(presetSel.selectedOptions).map(o=>o.value).filter(Boolean) : [];
+  const outDirEl = document.getElementById('render-output-dir');
+  const targetDir = outDirEl ? outDirEl.value.trim() : '';
+  if (!targetDir) { alert('请选择输出目录'); return; }
+  const nameTplEl = document.getElementById('render-name-template');
+  const nameTemplate = nameTplEl ? nameTplEl.value : '{timeline}_{date}';
+  window.resolveAPI.startRender({ timelines: selectedTimelines, presetNames, targetDir, nameTemplate });
+  const modal = document.getElementById('render-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function loadRenderPresetsIntoSelect() {
+  const presets = await window.resolveAPI.getRenderPresets();
+  const sel = document.getElementById('render-preset-select');
+  if (!sel) return;
+  sel.innerHTML = '';
+  const list = Array.isArray(presets) ? presets : [];
+  if (list.length === 0) {
+    const opt = document.createElement('option');
+    opt.disabled = true;
+    opt.textContent = (i18nData.noPresets || 'No presets available');
+    sel.appendChild(opt);
+  } else {
+    list.forEach((name) => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name; sel.appendChild(opt);
+    });
+  }
+  updatePresetCount();
+}
+
+function updatePresetCount() {
+  const sel = document.getElementById('render-preset-select');
+  const countEl = document.getElementById('preset-count');
+  if (!sel || !countEl) return;
+  const count = Array.from(sel.selectedOptions||[]).length;
+  const tpl = (i18nData.selectedCount || 'Selected: {count}');
+  countEl.textContent = tpl.replace('{count}', count);
 }
