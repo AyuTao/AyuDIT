@@ -1,15 +1,16 @@
 let filePath = null;
+let I18N = {};
 
 // --- I18n ---
 async function applyTranslations() {
   const settings = await window.progressAPI.getSettings();
-  const i18nData = await window.progressAPI.loadLanguage(
+  I18N = await window.progressAPI.loadLanguage(
     settings.language || "en",
   );
   document.querySelectorAll("[data-i18n-key]").forEach((el) => {
     const key = el.getAttribute("data-i18n-key");
-    if (i18nData[key]) {
-      el.textContent = i18nData[key];
+    if (I18N[key]) {
+      el.textContent = I18N[key];
     }
   });
 }
@@ -29,17 +30,25 @@ window.progressAPI.onProgress(({ progress }) => {
 window.progressAPI.onComplete((data) => {
   filePath = data.filePath;
   const error = data.error;
+  const failures = data.failures || [];
 
   const progressContainer = document.getElementById("progress-container");
   const completionContainer = document.getElementById("completion-container");
   const completionMessage = document.getElementById("completion-message");
 
   if (error) {
-    completionMessage.textContent = `Error: ${error}`;
+    const errLabel = I18N.error || "Error";
+    completionMessage.textContent = `${errLabel}: ${error}`;
     document.getElementById("open-file-btn").style.display = "none";
     document.getElementById("open-folder-btn").style.display = "none";
   } else {
-    completionMessage.textContent = "Export Complete!";
+    const hasFails = Array.isArray(failures) && failures.length > 0;
+    if (hasFails) {
+      const tpl = I18N.exportCompleteWithFailures || "Export Complete (with {count} failures)";
+      completionMessage.textContent = tpl.replace("{count}", failures.length);
+    } else {
+      completionMessage.textContent = I18N.exportComplete || "Export Complete!";
+    }
   }
 
   progressContainer.style.display = "none";
@@ -63,3 +72,19 @@ document.getElementById("open-folder-btn").addEventListener("click", () => {
   }
   window.progressAPI.close();
 });
+  // render failures if any
+  const failBox = document.getElementById("failures");
+  if (failBox) {
+    if (failures && failures.length > 0) {
+      const lines = failures.slice(0, 50).map((f) => {
+        const t = f.timeline ? `[${f.timeline}]` : "";
+        const c = f.clip ? ` ${f.clip}` : "";
+        const tc = f.timecode ? ` @ ${f.timecode}` : "";
+        return `- ${t}${c}${tc}`;
+      });
+      if (failures.length > 50) lines.push(`... (${failures.length - 50} more)`);
+      failBox.textContent = `Failed items (first ${Math.min(50, failures.length)}):\n` + lines.join("\n");
+    } else {
+      failBox.textContent = "";
+    }
+  }

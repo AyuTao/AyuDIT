@@ -113,6 +113,14 @@ function getSettings() {
       if (typeof s.coverPageEnabled === "undefined") { s.coverPageEnabled = true; updated = true; }
       if (typeof s.coverDITName === "undefined") { s.coverDITName = ""; updated = true; }
       if (typeof s.coverCustomFieldsText === "undefined") { s.coverCustomFieldsText = ""; updated = true; }
+      if (typeof s.captureMaxWaitMs === "undefined") { s.captureMaxWaitMs = 2000; updated = true; }
+      if (typeof s.captureRetryCount === "undefined") { s.captureRetryCount = 3; updated = true; }
+      if (typeof s.captureRetryIntervals === "undefined") { s.captureRetryIntervals = [250, 500, 800]; updated = true; }
+      // 兼容旧版本把重试间隔存成字符串的情况
+      if (typeof s.captureRetryIntervals === "string") {
+        s.captureRetryIntervals = s.captureRetryIntervals.split(/[,\s]+/).map((x) => parseInt(x, 10)).filter((n) => Number.isFinite(n));
+        updated = true;
+      }
       if (updated) fs.writeFileSync(settingsPath, JSON.stringify(s));
       return s;
     } else {
@@ -123,6 +131,9 @@ function getSettings() {
         coverPageEnabled: true,
         coverDITName: "",
         coverCustomFieldsText: "",
+        captureMaxWaitMs: 2000,
+        captureRetryCount: 3,
+        captureRetryIntervals: [250, 500, 800],
       };
       fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings));
       return defaultSettings;
@@ -136,6 +147,9 @@ function getSettings() {
       coverPageEnabled: true,
       coverDITName: "",
       coverCustomFieldsText: "",
+      captureMaxWaitMs: 2000,
+      captureRetryCount: 3,
+      captureRetryIntervals: [250, 500, 800],
     }; // Fallback to default
   }
 }
@@ -493,9 +507,9 @@ async function generatePdfReport(
   const resolve = await getResolve();
   if (!resolve) return;
 
-  const supportedPages = ["edit", "color", "cut", "fairlight", "deliver"];
+  const targetPage = "edit";
   const currentPage = await resolve.GetCurrentPage();
-  const mustSwitchPage = !supportedPages.includes(currentPage);
+  const mustSwitchPage = currentPage !== targetPage;
 
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
@@ -537,7 +551,7 @@ async function generatePdfReport(
 
   try {
     if (mustSwitchPage) {
-      await resolve.OpenPage("edit");
+      await resolve.OpenPage(targetPage);
     }
 
     const project = await getCurrentProject();
@@ -550,6 +564,15 @@ async function generatePdfReport(
       const tl = await project.GetTimelineByIndex(i);
       timelineMap.set(await tl.GetName(), tl);
     }
+
+    // 从设置读取抓帧参数
+    const capSettings = getSettings() || {};
+    const capMaxWait = capSettings.captureMaxWaitMs || 2000;
+    const capRetryCount = capSettings.captureRetryCount || 3;
+    const capIntervals = capSettings.captureRetryIntervals || [250, 500, 800];
+
+    // 失败统计
+    const failures = [];
 
     // Preload timeline markers for selected timelines (for marked export mode)
     const markersPerTimeline = new Map();
@@ -576,11 +599,13 @@ async function generatePdfReport(
       if (!timeline) continue;
       const videoTracks = await timeline.GetTrackCount("video");
       for (let i = 1; i <= videoTracks; i++) {
-        const items = (await timeline.GetItemListInTrack("video", i)) || [];
+        const raw = await timeline.GetItemListInTrack("video", i);
+        const items = Array.isArray(raw) ? raw : Object.values(raw || {});
         totalClipsToProcess += items.length;
       }
     }
     let clipsProcessed = 0;
+    try { progressCb({ progress: 0 }); } catch (_) {}
 
     // ----- Cover Page (optional) -----
     if (cover && cover.enabled) {
@@ -679,8 +704,9 @@ async function generatePdfReport(
       const videoTracks = await timeline.GetTrackCount("video");
       let clips = [];
       for (let i = 1; i <= videoTracks; i++) {
-        const items = await timeline.GetItemListInTrack("video", i);
-        if (items) clips.push(...items);
+        const raw = await timeline.GetItemListInTrack("video", i);
+        const items = Array.isArray(raw) ? raw : Object.values(raw || {});
+        if (items && items.length) clips.push(...items);
       }
 
       let totalSize = 0;
@@ -727,7 +753,8 @@ async function generatePdfReport(
 
       for (const clip of clips) {
         clipsProcessed++;
-        progressCb({ progress: (clipsProcessed / totalClipsToProcess) * 100 });
+        progressCb({ progress: (clipsProcessed / Math.max(totalClipsToProcess, 1)) * 100 });
+        await sleep(0);
 
         let mediaPoolItem;
         try {
@@ -762,17 +789,16 @@ async function generatePdfReport(
             break;
         }
 
-        await timeline.SetCurrentTimecode(
-          framesToTimecode(frameToExport, timelineFrameRate),
-        );
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        const targetTC = framesToTimecode(frameToExport, timelineFrameRate);
+        await timeline.SetCurrentTimecode(targetTC);
+        await waitForPlayhead(timeline, targetTC, capMaxWait);
 
         const tempDir = os.tmpdir();
         const tempFilePath = path.join(
           tempDir,
           `resolve_thumb_${Date.now()}.jpg`,
         );
-        const success = await project.ExportCurrentFrameAsStill(tempFilePath);
+        const success = await exportStillWithRetry(project, tempFilePath, capRetryCount, capIntervals);
 
         const blockStartY = y;
         const thumbX = margin;
@@ -793,6 +819,7 @@ async function generatePdfReport(
             fs.unlinkSync(tempFilePath);
           } catch (e) {
             debugLog(`Could not embed image for ${clipName}: ${e.toString()}`);
+            failures.push({ timeline: timelineName, clip: clipName, timecode: targetTC, reason: 'embed_failed' });
           }
         } else {
           page.drawRectangle({
@@ -809,6 +836,7 @@ async function generatePdfReport(
             size: 8,
             color: rgb(0.5, 0.5, 0.5),
           });
+          failures.push({ timeline: timelineName, clip: clipName, timecode: targetTC, reason: 'capture_failed' });
         }
 
         let metaX = thumbX + thumbWidth + 15;
@@ -910,7 +938,7 @@ async function generatePdfReport(
     const pdfBytes = await pdfDoc.save();
     fs.writeFileSync(filePath, pdfBytes);
     if (progressWindow) {
-      progressWindow.webContents.send("generation-complete", { filePath });
+      progressWindow.webContents.send("generation-complete", { filePath, failures });
     }
   } catch (error) {
     debugLog(`Error generating PDF report: ${error.toString()}`);
@@ -934,10 +962,10 @@ async function generateCsvReport(
   const resolve = await getResolve();
   if (!resolve) return;
 
-  // Some APIs behave more reliably on Edit/Color pages
-  const supportedPages = ["edit", "color", "cut", "fairlight", "deliver"];
+  // 始终在 Cut 页面执行，行为更稳定
+  const targetPage = "edit";
   const currentPage = await resolve.GetCurrentPage();
-  const mustSwitchPage = !supportedPages.includes(currentPage);
+  const mustSwitchPage = currentPage !== targetPage;
 
   const project = await getCurrentProject();
   if (!project) return;
@@ -959,7 +987,7 @@ async function generateCsvReport(
 
   try {
     if (mustSwitchPage) {
-      await resolve.OpenPage("edit");
+      await resolve.OpenPage(targetPage);
     }
 
     // Now that we're on a supported page, compute total items safely
@@ -996,6 +1024,7 @@ async function generateCsvReport(
           clipsProcessed++;
           const denom = Math.max(totalClipsToProcess, 1);
           progressCb({ progress: (clipsProcessed / denom) * 100 });
+          await sleep(0);
 
           let mediaPoolItem;
           try {
@@ -1120,32 +1149,52 @@ function registerResolveEventHandlers() {
     return { enabled, ditName, customFields };
   }
 
-  const createProgressWindow = () => {
-    progressWindow = new BrowserWindow({
-      width: 400,
-      height: 120,
-      parent: mainWindow,
-      modal: true,
-      frame: false,
-      resizable: false,
-      show: false, // Hide initially to prevent flicker
-      alwaysOnTop: true, // Ensure on top like PDF flow
-      webPreferences: {
-        preload: path.join(__dirname, "preload_progress.js"),
-      },
-    });
-    progressWindow.once("ready-to-show", () => {
-      // Reinforce top-most behavior and focus when shown
+  const createProgressWindow = async (opts = {}) => {
+    const { modal = true } = opts;
+    if (progressWindow && !progressWindow.isDestroyed()) {
       try {
-        progressWindow.setAlwaysOnTop(true, "modal-panel");
         progressWindow.show();
         progressWindow.focus();
-      } catch (_) {
-        progressWindow.show();
-      }
+        progressWindow.setAlwaysOnTop(true, "screen-saver");
+      } catch (_) {}
+      return;
+    }
+    return new Promise((resolve) => {
+      progressWindow = new BrowserWindow({
+        width: 400,
+        height: 120,
+        parent: mainWindow,
+        modal,
+        frame: false,
+        resizable: false,
+        show: false, // Hide initially to prevent flicker
+        alwaysOnTop: true, // Ensure on top like PDF flow
+        webPreferences: {
+          preload: path.join(__dirname, "preload_progress.js"),
+        },
+      });
+      progressWindow.once("ready-to-show", () => {
+        // Reinforce top-most behavior and focus when shown
+        try {
+          progressWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+          progressWindow.setAlwaysOnTop(true, "screen-saver");
+          progressWindow.show();
+          progressWindow.focus();
+        } catch (_) {
+          progressWindow.show();
+        }
+      });
+      progressWindow.webContents.once("did-finish-load", () => {
+        try {
+          progressWindow.webContents.send("generation-progress", { progress: 0 });
+          // 再次提升置顶等级，防止被宿主窗口覆盖
+          try { progressWindow.setAlwaysOnTop(true, "screen-saver"); } catch (_) {}
+        } catch (_) {}
+        resolve();
+      });
+      progressWindow.loadFile("progress.html");
+      progressWindow.on("closed", () => (progressWindow = null));
     });
-    progressWindow.loadFile("progress.html");
-    progressWindow.on("closed", () => (progressWindow = null));
   };
 
   ipcMain.on("export-pdf-report", async (event, payload) => {
@@ -1160,7 +1209,8 @@ function registerResolveEventHandlers() {
     });
 
     if (filePath) {
-      createProgressWindow();
+      await createProgressWindow({ modal: true });
+      if (progressWindow) progressWindow.webContents.send("generation-progress", { progress: 1 });
       let { timelines, thumbnailSource, reportLogoPath, cover } = payload;
       if (!timelines || timelines.length === 0) {
         const project = await getCurrentProject();
@@ -1180,6 +1230,10 @@ function registerResolveEventHandlers() {
       } else {
         if (progressWindow) progressWindow.close();
       }
+    } else {
+      if (progressWindow) {
+        try { progressWindow.close(); } catch (_) {}
+      }
     }
   });
 
@@ -1195,7 +1249,8 @@ function registerResolveEventHandlers() {
     });
 
     if (filePath) {
-      createProgressWindow();
+      await createProgressWindow({ modal: true });
+      if (progressWindow) progressWindow.webContents.send("generation-progress", { progress: 1 });
       let { timelines } = payload;
       if (!timelines || timelines.length === 0) {
         const project = await getCurrentProject();
@@ -1210,6 +1265,10 @@ function registerResolveEventHandlers() {
         });
       } else {
         if (progressWindow) progressWindow.close();
+      }
+    } else {
+      if (progressWindow) {
+        try { progressWindow.close(); } catch (_) {}
       }
     }
   });
@@ -1290,7 +1349,8 @@ function registerResolveEventHandlers() {
         fs.mkdirSync(exportDir, { recursive: true });
       }
 
-      createProgressWindow();
+      await createProgressWindow({ modal: true });
+      if (progressWindow) progressWindow.webContents.send("generation-progress", { progress: 1 });
       if (timelines && timelines.length > 0) {
         exportThumbnails(
           exportDir,
@@ -1303,6 +1363,10 @@ function registerResolveEventHandlers() {
         );
       } else {
         if (progressWindow) progressWindow.close();
+      }
+    } else {
+      if (progressWindow) {
+        try { progressWindow.close(); } catch (_) {}
       }
     }
   });
@@ -1317,17 +1381,23 @@ async function exportThumbnails(
   const resolve = await getResolve();
   if (!resolve) return;
 
-  const supportedPages = ["edit", "color", "cut", "fairlight", "deliver"];
+  const targetPage = "edit";
   const currentPage = await resolve.GetCurrentPage();
-  const mustSwitchPage = !supportedPages.includes(currentPage);
+  const mustSwitchPage = currentPage !== targetPage;
 
   try {
     if (mustSwitchPage) {
-      await resolve.OpenPage("edit");
+      await resolve.OpenPage(targetPage);
     }
 
     const project = await getCurrentProject();
     if (!project) return;
+
+    // 抓帧设置
+    const capSettings = getSettings() || {};
+    const capMaxWait = capSettings.captureMaxWaitMs || 2000;
+    const capRetryCount = capSettings.captureRetryCount || 3;
+    const capIntervals = capSettings.captureRetryIntervals || [250, 500, 800];
 
     const timelineCount = await project.GetTimelineCount();
     const timelineMap = new Map();
@@ -1367,7 +1437,8 @@ async function exportThumbnails(
 
       const videoTracks = await timeline.GetTrackCount("video");
       for (let i = 1; i <= videoTracks; i++) {
-        const items = (await timeline.GetItemListInTrack("video", i)) || [];
+        const raw = await timeline.GetItemListInTrack("video", i);
+        const items = Array.isArray(raw) ? raw : Object.values(raw || {});
         totalClipsToProcess += items.length;
       }
     }
@@ -1398,6 +1469,7 @@ async function exportThumbnails(
           // advance progress by one marker
           clipsProcessed++;
           progressCb({ progress: (clipsProcessed / Math.max(totalClipsToProcess, 1)) * 100 });
+          await sleep(0);
 
           const timelineFrameRate = parseFloat(
             await timeline.GetSetting("timelineFrameRate"),
@@ -1409,7 +1481,7 @@ async function exportThumbnails(
           const absFrames = startFrames + Math.max(0, (mf - 1));
           const tc = framesToTimecode(absFrames, timelineFrameRate);
           await timeline.SetCurrentTimecode(tc);
-          await new Promise((resolve) => setTimeout(resolve, 200));
+          await waitForPlayhead(timeline, tc, capMaxWait);
 
           // Try to find the clip under this marker (for naming)
           let clipBase = "no-clip";
@@ -1450,9 +1522,11 @@ async function exportThumbnails(
             exportDir,
             `${timelinePart}-${safeTc}.jpg`,
           );
-          const success = await project.ExportCurrentFrameAsStill(thumbnailPath);
+          const success = await exportStillWithRetry(project, thumbnailPath, capRetryCount, capIntervals);
           if (!success) {
             debugLog(`Failed to export thumbnail at marker ${tc} for timeline ${timelineName}`);
+            if (!globalThis.__thumbFailures) globalThis.__thumbFailures = [];
+            globalThis.__thumbFailures.push({ timeline: timelineName, timecode: tc, reason: 'capture_failed' });
           }
         }
 
@@ -1473,7 +1547,8 @@ async function exportThumbnails(
         // All mode does not filter by markers
 
         clipsProcessed++;
-        progressCb({ progress: (clipsProcessed / totalClipsToProcess) * 100 });
+        progressCb({ progress: (clipsProcessed / Math.max(totalClipsToProcess, 1)) * 100 });
+        await sleep(0);
 
         const startFrame = await clip.GetStart();
         const endFrame = await clip.GetEnd();
@@ -1495,7 +1570,7 @@ async function exportThumbnails(
 
         const tcForName = framesToTimecode(frameToExport, timelineFrameRate);
         await timeline.SetCurrentTimecode(tcForName);
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await waitForPlayhead(timeline, tcForName, capMaxWait);
 
         // 获取文件名
         const props = await mediaPoolItem.GetClipProperty();
@@ -1508,20 +1583,25 @@ async function exportThumbnails(
           `${timelinePart}-${safeTc}.jpg`,
         );
 
-        const success = await project.ExportCurrentFrameAsStill(thumbnailPath);
+        const success = await exportStillWithRetry(project, thumbnailPath, capRetryCount, capIntervals);
 
         if (!success) {
           debugLog(`Failed to export thumbnail for: ${fileName}`);
+          if (!globalThis.__thumbFailures) globalThis.__thumbFailures = [];
+          globalThis.__thumbFailures.push({ timeline: timelineName, clip: baseName, timecode: tcForName, reason: 'capture_failed' });
         }
       }
 
       await timeline.SetCurrentTimecode(originalTimecode);
     }
 
+    const failures = globalThis.__thumbFailures || [];
+    globalThis.__thumbFailures = [];
     if (progressWindow) {
       progressWindow.webContents.send("generation-complete", {
         filePath: exportDir,
-        message: `缩略图已导出到: ${exportDir}`
+        message: `缩略图已导出到: ${exportDir}`,
+        failures,
       });
     }
   } catch (error) {
@@ -1577,13 +1657,13 @@ async function hasAnyMarkedClips(timelineNames) {
   const resolve = await getResolve();
   if (!resolve) return false;
 
-  const supportedPages = ["edit", "color", "cut", "fairlight", "deliver"];
+  const targetPage = "edit";
   const currentPage = await resolve.GetCurrentPage();
-  const mustSwitchPage = !supportedPages.includes(currentPage);
+  const mustSwitchPage = currentPage !== targetPage;
 
   try {
     if (mustSwitchPage) {
-      await resolve.OpenPage("edit");
+      await resolve.OpenPage(targetPage);
     }
     const project = await getCurrentProject();
     if (!project) return false;
@@ -1609,4 +1689,39 @@ async function hasAnyMarkedClips(timelineNames) {
       await resolve.OpenPage(currentPage);
     }
   }
+}
+// --- Small async helpers ---
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// 等待播放头到达指定时间码（避免低性能机器上未就位就抓帧）
+async function waitForPlayhead(timeline, targetTC, timeoutMs = 2000) {
+  const start = Date.now();
+  try {
+    while (Date.now() - start < timeoutMs) {
+      const cur = await timeline.GetCurrentTimecode();
+      if (cur === targetTC) return true;
+      await sleep(50);
+    }
+  } catch (_) {
+    // 忽略异常，按超时处理
+  }
+  return false;
+}
+
+// 多次重试抓帧，适配低配机器（渲染/解码慢）
+async function exportStillWithRetry(project, outPath, retries = 3, waits = [200, 400, 800]) {
+  for (let i = 0; i < retries; i++) {
+    const ok = await project.ExportCurrentFrameAsStill(outPath);
+    if (ok) {
+      try {
+        const st = fs.statSync(outPath);
+        if (st && st.size > 0) return true;
+      } catch (_) {}
+    }
+    const wait = waits[i] || waits[waits.length - 1] || 300;
+    await sleep(wait);
+  }
+  return false;
 }

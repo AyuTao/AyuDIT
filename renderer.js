@@ -41,6 +41,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   if (coverDitEl) coverDitEl.value = currentSettings.coverDITName || "";
   const coverFieldsEl = document.getElementById("cover-custom-fields");
   if (coverFieldsEl) coverFieldsEl.value = currentSettings.coverCustomFieldsText || "";
+  // 抓帧设置赋值
+  const capWaitEl = document.getElementById("capture-wait-ms");
+  if (capWaitEl) capWaitEl.value = currentSettings.captureMaxWaitMs ?? 2000;
+  const capRetryEl = document.getElementById("capture-retry-count");
+  if (capRetryEl) capRetryEl.value = currentSettings.captureRetryCount ?? 3;
+  const capIntervalsEl = document.getElementById("capture-retry-intervals");
+  if (capIntervalsEl) capIntervalsEl.value = (currentSettings.captureRetryIntervals || [250,500,800]).join(",");
   updateLogoPreview();
   setupEventListeners();
   updateDashboard();
@@ -132,6 +139,12 @@ function setupEventListeners() {
   if (coverDit) coverDit.addEventListener("input", handleCoverDitChange);
   const coverFields = document.getElementById("cover-custom-fields");
   if (coverFields) coverFields.addEventListener("input", handleCoverFieldsChange);
+  const capWait = document.getElementById("capture-wait-ms");
+  if (capWait) capWait.addEventListener("change", handleCaptureWaitChange);
+  const capRetry = document.getElementById("capture-retry-count");
+  if (capRetry) capRetry.addEventListener("change", handleCaptureRetryChange);
+  const capIntervals = document.getElementById("capture-retry-intervals");
+  if (capIntervals) capIntervals.addEventListener("change", handleCaptureIntervalsChange);
   document
     .getElementById("change-logo-button")
     .addEventListener("click", handleChangeLogo);
@@ -271,6 +284,25 @@ async function handleCoverDitChange(event) {
 
 async function handleCoverFieldsChange(event) {
   currentSettings.coverCustomFieldsText = event.target.value;
+  await window.resolveAPI.saveSettings(currentSettings);
+}
+
+async function handleCaptureWaitChange(event) {
+  const v = parseInt(event.target.value, 10);
+  currentSettings.captureMaxWaitMs = Number.isFinite(v) && v >= 0 ? v : 2000;
+  await window.resolveAPI.saveSettings(currentSettings);
+}
+
+async function handleCaptureRetryChange(event) {
+  const v = parseInt(event.target.value, 10);
+  currentSettings.captureRetryCount = Number.isFinite(v) && v >= 0 ? v : 3;
+  await window.resolveAPI.saveSettings(currentSettings);
+}
+
+async function handleCaptureIntervalsChange(event) {
+  const text = event.target.value || "";
+  const arr = text.split(/[,\s]+/).map((x) => parseInt(x, 10)).filter((n) => Number.isFinite(n) && n >= 0);
+  currentSettings.captureRetryIntervals = arr.length > 0 ? arr : [250,500,800];
   await window.resolveAPI.saveSettings(currentSettings);
 }
 
