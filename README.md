@@ -1,11 +1,12 @@
-# AyuDIT：生成DIT报告 单帧 CSV元数据信息 批量导出视频
+# AyuDIT：达芬奇里的 DIT 全能工具，帮你省大钱！
 
-`AyuDIT` 是直接构建在 DaVinci Resolve Studio 内部的一个工作流程集合插件，基于electron，完全开源，
+`AyuDIT` 直接深度集成到达芬奇 Resolve Studio。基于 Electron 框架开发的，而且完全免费开源哦！
 
+达芬奇 Resolve 从 20 版本Apple ProRes RAW 都开始原生支持了。这么一来，Resolve 简直成了 DIT 界的“万能工具箱”，几乎所有主流视频格式都能搞定。
 
-`AyuDIT` 诞生是因为芬奇20版本开始原生支持 **Apple ProRes RAW**，这个平台已经成为一个真正意义上的“万金油”工具，几乎能够处理所有格式。
+所以我们觉得，对于很多中小型 DIT 团队来说，光用达芬奇 Resolve 就够跑完整套 DIT 流程了，没必要再买别的软件。
 
-所以对于一些普通中小型组的DIT工作组DIT工作全流程用达芬奇来完成就足够了，于是有了开发这个插件的想法。希望有人来添加一些更实用的功能。 目前全球影视行业状况还是挺哪个的，**Pomfort Silverstack Lab**、**Foolcat** 的订阅能省就省。
+**Pomfort Silverstack Lab**、**Foolcat** 的订阅能省就省。AyuDIT 就是在这个想法下诞生的！
 ![AyuDIT 软件截图](./img/ayuditui.png)
 
 ## 捐赠
