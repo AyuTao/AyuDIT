@@ -1,6 +1,6 @@
 # AyuDIT：达芬奇里的 DIT 全能工具，帮你省大钱！
 
-`AyuDIT` 直接深度集成到达芬奇 Resolve Studio。基于 Electron 框架开发的，而且完全免费开源哦！
+`AyuDIT` 直接深度集成到达芬奇 Resolve Studio。支持跨平台WIN\MAC系统，基于 Electron 框架开发的，而且完全免费开源哦！
 
 达芬奇 Resolve 从 20 版本Apple ProRes RAW 都开始原生支持了。这么一来，Resolve 简直成了 DIT 界的“万能工具箱”，几乎所有主流视频格式都能搞定。
 
@@ -45,7 +45,6 @@
 本指南将引导您完成 AyuDIT 插件在 DaVinci Resolve Studio 中的安装过程。
 
 ## 系统要求
-
 - DaVinci Resolve Studio 20.2 或更高版本。
 - 您电脑的管理员权限。
 
