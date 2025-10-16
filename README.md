@@ -57,14 +57,14 @@
     -   解压下载的 `AyuDIT.zip` 文件，您会得到一个名为 `AyuDIT` 的文件夹。
 
 3.  **拷贝插件文件夹**
-    -   将整个 `AyuDIT` 文件夹拷贝到达芬奇的 “Workflow Integration Plugins” 目录中。
+    -   将整个 `AyuDIT` 文件夹拷贝到达芬奇的 “Workflow Integration Plugins” 文件夹中（如果没有则自己创建该文件夹）。
 
     -   **在 macOS 系统:**
-        -   该目录位于:
+        -   该文件夹位于:
         -   `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Workflow Integration Plugins/`
 
     -   **在 Windows 系统:**
-        -   该目录位于:
+        -   该文件夹位于:
         -   `%PROGRAMDATA%\Blackmagic Design\DaVinci Resolve\Support\Workflow Integration Plugins\`
         -   您可以直接将此路径复制并粘贴到文件资源管理器的地址栏中访问。
         
@@ -73,7 +73,7 @@
     -   如果达芬奇正在运行，请完全关闭并重启它。
 
 5.  **启动插件**
-    -   重启后，您可以在达芬奇的顶部菜单中找到并启动本插件：
+    -   重启达芬奇后，您可以在达芬奇的顶部菜单工作区-流程集合-ayudit启动本插件：
 
 ## 使用方法
 
