@@ -31,3 +31,27 @@ contextBridge.exposeInMainWorld("resolveAPI", {
   getLogDir: () => ipcRenderer.invoke("log:get-dir"),
   quitApp: () => ipcRenderer.send("app:quit"),
 });
+/*
+ * 文件名: preload.js
+ * 描述: 预加载脚本。通过 contextBridge 暴露 API 给渲染进程。
+ *
+ * GPLv3许可证声明:
+ * Copyright (C) 2025 AyuTao
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ *
+ * 作者: AyuTao
+ * GitHub: https://github.com/AyuTao/AyuDIT
+ */

@@ -1,3 +1,28 @@
+/*
+ * 文件名: progress.js
+ * 描述: 导出进度窗口脚本。显示进度、完成状态与操作按钮。
+ *
+ * GPLv3许可证声明:
+ * Copyright (C) 2025 AyuTao
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ *
+ * 作者: AyuTao
+ * GitHub: https://github.com/AyuTao/AyuDIT
+ */
+
 let filePath = null;
 let I18N = {};
 
