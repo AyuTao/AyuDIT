@@ -1,4 +1,4 @@
-# AyuDIT：达芬奇里的 DIT 全能工具，帮你省大钱！
+# AyuDIT：一个基于达芬奇工作流程集合的插件，生成PDF报告，批量导出单帧 批量导出视频 cvs元数据
 
 `AyuDIT` 直接深度集成到达芬奇 Resolve Studio。支持跨平台WIN\MAC系统，基于 Electron 框架开发的，而且完全免费开源哦！
 
