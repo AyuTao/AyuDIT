@@ -86,8 +86,31 @@ const menu = Menu.buildFromTemplate(menuTemplate);
 Menu.setApplicationMenu(menu);
 
 // --- Settings Management ---
+// Force userData under an AyuDIT folder instead of default Electron path
+// Use appData root (~/Library/Application Support on macOS, %APPDATA% on Windows, ~/.config on Linux)
+try {
+  const appDataRoot = app.getPath("appData");
+  const ayuditUserData = path.join(appDataRoot, "AyuDIT");
+  try { fs.mkdirSync(ayuditUserData, { recursive: true }); } catch (_) {}
+  app.setPath("userData", ayuditUserData);
+} catch (_) {}
+
+// Paths for settings and logs under the customized userData
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
 const logPath = path.join(app.getPath("userData"), "ayudit.log");
+
+// Migrate legacy files from default Electron userData if present
+try {
+  const legacyUserData = path.join(app.getPath("appData"), "Electron");
+  const legacySettings = path.join(legacyUserData, "settings.json");
+  const legacyLog = path.join(legacyUserData, "ayudit.log");
+  if (fs.existsSync(legacySettings) && !fs.existsSync(settingsPath)) {
+    try { fs.copyFileSync(legacySettings, settingsPath); } catch (_) {}
+  }
+  if (fs.existsSync(legacyLog) && !fs.existsSync(logPath)) {
+    try { fs.copyFileSync(legacyLog, logPath); } catch (_) {}
+  }
+} catch (_) {}
 
 function appendLog(message) {
   try {
@@ -1145,6 +1168,13 @@ function registerResolveEventHandlers() {
   });
   ipcMain.on("progress:show-item", (event, path) => {
     shell.showItemInFolder(path);
+  });
+  // General shell openers for settings/logs
+  ipcMain.on("shell:openPath", (event, p) => {
+    try { if (p) shell.openPath(p); } catch (e) { debugLog(`Failed to open path: ${p}`); }
+  });
+  ipcMain.on("shell:showItemInFolder", (event, p) => {
+    try { if (p) shell.showItemInFolder(p); } catch (e) { debugLog(`Failed to show item in folder: ${p}`); }
   });
   ipcMain.on("shell:openExternal", (event, url) => {
     try {
