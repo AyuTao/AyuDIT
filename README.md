@@ -7,6 +7,7 @@
 所以我们觉得，对于很多中小型 DIT 团队来说，光用达芬奇 Resolve 就够跑完整套 DIT 流程了。
 
 **Pomfort Silverstack Lab**、**Foolcat** 的订阅能省就省。
+
 ![AyuDIT 软件截图](./img/ayuditui.png)
 
 ## 捐赠
