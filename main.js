@@ -1646,10 +1646,11 @@ async function exportThumbnails(
 
           const safeTc = String(tc).replace(/[\\/:*?"<>|;]/g, "-");
           const timelinePart = safeFileComponent(timelineName);
-          const thumbnailPath = path.join(
-            exportDir,
-            `${timelinePart}-${safeTc}.jpg`,
-          );
+          const clipPart = safeFileComponent(clipBase);
+          const nameCore = clipPart && clipPart !== 'unknown'
+            ? `${timelinePart}-${clipPart}-${safeTc}`
+            : `${timelinePart}-${safeTc}`;
+          const thumbnailPath = path.join(exportDir, `${nameCore}.jpg`);
           const success = await exportStillWithRetry(project, thumbnailPath, capRetryCount, capIntervals);
           if (!success) {
             debugLog(`Failed to export thumbnail at marker ${tc} for timeline ${timelineName}`);
@@ -1705,11 +1706,12 @@ async function exportThumbnails(
         const fileName = props["File Name"] || `clip_${clipsProcessed}`;
         const baseName = path.parse(fileName).name; // 去掉扩展名
         const timelinePart = safeFileComponent(timelineName);
+        const clipPart = safeFileComponent(baseName);
         const safeTc = String(tcForName).replace(/[\\/:*?"<>|;]/g, "-");
-        const thumbnailPath = path.join(
-          exportDir,
-          `${timelinePart}-${safeTc}.jpg`,
-        );
+        const nameCore = clipPart && clipPart !== 'unknown'
+          ? `${timelinePart}-${clipPart}-${safeTc}`
+          : `${timelinePart}-${safeTc}`;
+        const thumbnailPath = path.join(exportDir, `${nameCore}.jpg`);
 
         const success = await exportStillWithRetry(project, thumbnailPath, capRetryCount, capIntervals);
 
