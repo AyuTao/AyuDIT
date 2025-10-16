@@ -1,4 +1,4 @@
-# AyuDIT：生成DIT报告 单帧 元数据信息生成插件
+# AyuDIT：生成DIT报告 单帧 CSV元数据信息 批量导出视频
 
 `AyuDIT` 是直接构建在 DaVinci Resolve Studio 内部的一个工作流程集合插件，基于electron，完全开源，
 
