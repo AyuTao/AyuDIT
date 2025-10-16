@@ -650,16 +650,34 @@ async function generatePdfReport(
 
     // markersPerTimeline prepared above (if needed for future use)
 
+    // Build unique clip lists per timeline to avoid duplicates across tracks
+    const uniqueClipsMap = new Map();
     let totalClipsToProcess = 0;
     for (const timelineName of timelineNames) {
       const timeline = timelineMap.get(timelineName);
       if (!timeline) continue;
       const videoTracks = await timeline.GetTrackCount("video");
+      const seen = new Set();
+      const unique = [];
       for (let i = 1; i <= videoTracks; i++) {
         const raw = await timeline.GetItemListInTrack("video", i);
         const items = Array.isArray(raw) ? raw : Object.values(raw || {});
-        totalClipsToProcess += items.length;
+        for (const clip of (items || [])) {
+          try {
+            const mpi = await clip.GetMediaPoolItem();
+            if (!mpi) continue;
+            const id = await mpi.GetMediaId();
+            const st = await clip.GetStart();
+            const en = await clip.GetEnd();
+            const key = `${id}|${st}|${en}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            unique.push(clip);
+          } catch (_) {}
+        }
       }
+      uniqueClipsMap.set(timelineName, unique);
+      totalClipsToProcess += unique.length;
     }
     let clipsProcessed = 0;
     try { progressCb({ progress: 0 }); } catch (_) {}
@@ -758,13 +776,8 @@ async function generatePdfReport(
         await timeline.GetSetting("timelineFrameRate"),
       );
 
-      const videoTracks = await timeline.GetTrackCount("video");
-      let clips = [];
-      for (let i = 1; i <= videoTracks; i++) {
-        const raw = await timeline.GetItemListInTrack("video", i);
-        const items = Array.isArray(raw) ? raw : Object.values(raw || {});
-        if (items && items.length) clips.push(...items);
-      }
+      // Use unique clips for this timeline (deduped across tracks)
+      const clips = uniqueClipsMap.get(timelineName) || [];
 
       let totalSize = 0;
       let mediaClipCount = 0;
@@ -1523,23 +1536,40 @@ async function exportThumbnails(
     }
 
     let totalClipsToProcess = 0;
+    // Pre-compute unique clips per timeline for 'all' mode to avoid duplicates
+    const uniqueClipsMap = new Map();
     for (const timelineName of timelineNames) {
       const timeline = timelineMap.get(timelineName);
       if (!timeline) continue;
 
       if (exportMode === "marked") {
-        // In marked mode, total work equals number of timeline markers
         const markerFrames = markersPerTimeline.get(timelineName) || [];
         totalClipsToProcess += markerFrames.length;
         continue;
       }
 
       const videoTracks = await timeline.GetTrackCount("video");
+      const seen = new Set();
+      const unique = [];
       for (let i = 1; i <= videoTracks; i++) {
         const raw = await timeline.GetItemListInTrack("video", i);
         const items = Array.isArray(raw) ? raw : Object.values(raw || {});
-        totalClipsToProcess += items.length;
+        for (const clip of (items || [])) {
+          try {
+            const mpi = await clip.GetMediaPoolItem();
+            if (!mpi) continue;
+            const id = await mpi.GetMediaId();
+            const st = await clip.GetStart();
+            const en = await clip.GetEnd();
+            const key = `${id}|${st}|${en}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            unique.push(clip);
+          } catch (_) {}
+        }
       }
+      uniqueClipsMap.set(timelineName, unique);
+      totalClipsToProcess += unique.length;
     }
 
     let clipsProcessed = 0;
@@ -1554,11 +1584,10 @@ async function exportThumbnails(
         await timeline.GetSetting("timelineFrameRate"),
       );
 
-      const videoTracks = await timeline.GetTrackCount("video");
+      // Prepare clips list depending on mode
       let clips = [];
-      for (let i = 1; i <= videoTracks; i++) {
-        const items = await timeline.GetItemListInTrack("video", i);
-        if (items) clips.push(...items);
+      if (exportMode !== "marked") {
+        clips = uniqueClipsMap.get(timelineName) || [];
       }
 
       // If marked mode: export frames at timeline marker positions
