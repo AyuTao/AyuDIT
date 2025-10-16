@@ -4,9 +4,9 @@
 
 达芬奇 Resolve 从 20 版本Apple ProRes RAW 都开始原生支持了。这么一来，Resolve 简直成了 DIT 界的“万能工具箱”，几乎所有主流视频格式都能搞定。
 
-所以我们觉得，对于很多中小型 DIT 团队来说，光用达芬奇 Resolve 就够跑完整套 DIT 流程了，没必要再买别的软件。
+所以我们觉得，对于很多中小型 DIT 团队来说，光用达芬奇 Resolve 就够跑完整套 DIT 流程了。
 
-**Pomfort Silverstack Lab**、**Foolcat** 的订阅能省就省。AyuDIT 就是在这个想法下诞生的！
+**Pomfort Silverstack Lab**、**Foolcat** 的订阅能省就省。
 ![AyuDIT 软件截图](./img/ayuditui.png)
 
 ## 捐赠
