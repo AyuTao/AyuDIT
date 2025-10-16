@@ -151,6 +151,17 @@ function setupEventListeners() {
   document
     .getElementById("reset-logo-button")
     .addEventListener("click", handleResetLogo);
+  const openLogDirBtn = document.getElementById('open-log-dir-button');
+  if (openLogDirBtn) {
+    openLogDirBtn.addEventListener('click', async ()=>{
+      try {
+        const dir = await window.resolveAPI.getLogDir();
+        if (dir) {
+          window.resolveAPI.openPath(dir);
+        }
+      } catch(e) { console.error(e); }
+    });
+  }
   document
     .getElementById("generate-pdf-button")
     .addEventListener("click", () => handleGenerateReportFromSelection("pdf"));

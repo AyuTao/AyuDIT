@@ -87,6 +87,14 @@ Menu.setApplicationMenu(menu);
 
 // --- Settings Management ---
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
+const logPath = path.join(app.getPath("userData"), "ayudit.log");
+
+function appendLog(message) {
+  try {
+    const line = `[${new Date().toISOString()}] ${message}\n`;
+    fs.appendFileSync(logPath, line);
+  } catch (_) {}
+}
 
 function detectDefaultLanguage() {
   try {
@@ -224,13 +232,9 @@ function isGoodTake(metadata) {
 // Function to log into renderer window console.
 function debugLog(message) {
   if (mainWindow) {
-    mainWindow.webContents.send("log:message", message.toString());
+    try { mainWindow.webContents.send("log:message", message.toString()); } catch (_) {}
   }
-  try {
-    if (progressWindow) {
-      progressWindow.webContents.send("log:message", message.toString());
-    }
-  } catch (_) {}
+  appendLog(String(message));
 }
 
 // Initialize Resolve interface and returns Resolve object.
@@ -942,8 +946,10 @@ async function generatePdfReport(
 
     const pdfBytes = await pdfDoc.save();
     fs.writeFileSync(filePath, pdfBytes);
+    // 写入失败清单到日志
+    try { (failures||[]).forEach(f=> appendLog(`[PDF] failure timeline=${f.timeline||''} clip=${f.clip||''} tc=${f.timecode||''} reason=${f.reason||''}`)); } catch(_) {}
     if (progressWindow) {
-      progressWindow.webContents.send("generation-complete", { filePath, failures });
+      progressWindow.webContents.send("generation-complete", { filePath });
     }
   } catch (error) {
     debugLog(`Error generating PDF report: ${error.toString()}`);
@@ -1126,6 +1132,8 @@ function registerResolveEventHandlers() {
       return [];
     } catch (e) { return []; }
   });
+  ipcMain.handle("log:get-path", async () => logPath);
+  ipcMain.handle("log:get-dir", async () => path.dirname(logPath));
   ipcMain.on("app:quit", () => app.quit());
 
   // Handlers from Progress Window
@@ -1193,8 +1201,8 @@ function registerResolveEventHandlers() {
     }
     return new Promise((resolve) => {
       progressWindow = new BrowserWindow({
-        width: 400,
-        height: 120,
+        width: 420,
+        height: 160,
         parent: mainWindow,
         modal,
         frame: false,
@@ -1633,11 +1641,12 @@ async function exportThumbnails(
 
     const failures = globalThis.__thumbFailures || [];
     globalThis.__thumbFailures = [];
+    // 写入失败清单到日志
+    try { (failures||[]).forEach(f=> appendLog(`[THUMB] failure timeline=${f.timeline||''} clip=${f.clip||''} tc=${f.timecode||''} reason=${f.reason||''}`)); } catch(_) {}
     if (progressWindow) {
       progressWindow.webContents.send("generation-complete", {
         filePath: exportDir,
         message: `缩略图已导出到: ${exportDir}`,
-        failures,
       });
     }
   } catch (error) {

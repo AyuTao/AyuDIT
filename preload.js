@@ -27,5 +27,7 @@ contextBridge.exposeInMainWorld("resolveAPI", {
   openImageDialog: () => ipcRenderer.invoke("dialog:open-image"),
   getMoviesDir: () => ipcRenderer.invoke("path:get-movies"),
   openDirectoryDialog: () => ipcRenderer.invoke("dialog:open-directory"),
+  getLogPath: () => ipcRenderer.invoke("log:get-path"),
+  getLogDir: () => ipcRenderer.invoke("log:get-dir"),
   quitApp: () => ipcRenderer.send("app:quit"),
 });

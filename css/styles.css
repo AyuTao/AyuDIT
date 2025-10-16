@@ -344,6 +344,16 @@ input[type="checkbox"], input[type="radio"] { accent-color: #0e639c; }
     font-size: 12px;
 }
 
+/* Triple inline fields (capture settings) */
+.triple-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: center;
+}
+.triple-row .sub-field { display:flex; align-items:center; gap:8px; }
+.triple-row .sub-field label { min-width: auto; white-space: nowrap; color:#cfcfcf; }
+
 /* Render modal layout tweaks */
 #render-modal .form-row select {
     flex: 1;

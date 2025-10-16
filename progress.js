@@ -30,7 +30,6 @@ window.progressAPI.onProgress(({ progress }) => {
 window.progressAPI.onComplete((data) => {
   filePath = data.filePath;
   const error = data.error;
-  const failures = data.failures || [];
 
   const progressContainer = document.getElementById("progress-container");
   const completionContainer = document.getElementById("completion-container");
@@ -42,20 +41,11 @@ window.progressAPI.onComplete((data) => {
     document.getElementById("open-file-btn").style.display = "none";
     document.getElementById("open-folder-btn").style.display = "none";
   } else {
-    const hasFails = Array.isArray(failures) && failures.length > 0;
-    if (hasFails) {
-      const tpl = I18N.exportCompleteWithFailures || "Export Complete (with {count} failures)";
-      completionMessage.textContent = tpl.replace("{count}", failures.length);
-    } else {
-      completionMessage.textContent = I18N.exportComplete || "Export Complete!";
-    }
+    completionMessage.textContent = I18N.exportComplete || "Export Complete!";
   }
 
   progressContainer.style.display = "none";
   completionContainer.style.display = "flex";
-  // auto-scroll logs to bottom
-  const logBox = document.getElementById('log-box');
-  if (logBox) logBox.scrollTop = logBox.scrollHeight;
 });
 
 document.getElementById("ok-btn").addEventListener("click", () => {
@@ -76,20 +66,7 @@ document.getElementById("open-folder-btn").addEventListener("click", () => {
   window.progressAPI.close();
 });
 
-// Live log into progress window
-const logBox = document.getElementById('log-box');
-if (window.progressAPI.onLogMessage && logBox) {
-  window.progressAPI.onLogMessage((msg) => {
-    const line = document.createElement('div');
-    line.textContent = String(msg);
-    logBox.appendChild(line);
-    // cap lines
-    if (logBox.childNodes.length > 500) {
-      logBox.removeChild(logBox.firstChild);
-    }
-    logBox.scrollTop = logBox.scrollHeight;
-  });
-}
+// 移除进度窗日志显示，日志已写入本地 log 文件
   // render failures if any
   const failBox = document.getElementById("failures");
   if (failBox) {
