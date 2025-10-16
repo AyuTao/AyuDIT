@@ -36,7 +36,7 @@
 
 ## 系统要求
 
--   **DaVinci Resolve Studio 20.2 或更高版本。**
+-   **DaVinci Resolve Studio 20.2.2 或更高版本。**
 -   **必须**使用 Studio 版本。
 
 ## 安装说明
@@ -46,7 +46,7 @@
 本指南将引导您完成 AyuDIT 插件在 DaVinci Resolve Studio 中的安装过程。
 
 ## 系统要求
-- DaVinci Resolve Studio 20.2 或更高版本。
+- DaVinci Resolve Studio 20.2.2 或更高版本。
 - 您电脑的管理员权限。
 
 ## 安装步骤
@@ -173,3 +173,7 @@
 
 本项目采用 **GNU General Public License v3.0** 授权。这意味着如果您使用、分发或修改此代码，您也必须将您的衍生作品在相同的许可下开源。详情请参阅 [LICENSE](LICENSE) 文件。
 
+其他问题：
+1. 为什么会有二进制文件WorkflowIntegration.node？
+
+   答：这是达芬奇官方编译的，主要作用是在基于 Electron 的插件和达芬奇 Resolve 应用程序之间建立通信桥梁，没有这个模块，插件就无法与 Resolve 进行任何交互。
